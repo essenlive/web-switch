@@ -6,7 +6,7 @@ import Link from "next/link";
 import { HelpScreen } from "@/components/helpScreen";
 import React, { useState } from "react";
 import { motion } from "motion/react"
-import { ModeToggle } from "@/components/mode-toggle";
+import { ThemePicker } from "@/components/theme-picker";
 
 export function Header({
     className,
@@ -27,13 +27,13 @@ export function Header({
                     </h1>
                     </motion.div>
                 </Link>
-                <motion.div 
-                whileHover={{ scale: 1.1 }} 
-                onClick={() => setShowHelp(true) } 
+                <motion.div
+                whileHover={{ scale: 1.1 }}
+                onClick={() => setShowHelp(true) }
                 className="flex justify-center items-center p-3 aspect-square cursor-pointer bg-background rounded-lg">
                     <Info className="text-foreground" size={24} />
                 </motion.div>
-                <ModeToggle />
+                <ThemePicker />
             </header>
             <HelpScreen visible={showHelp} closeHelp={() => setShowHelp(false)} />
         </> 
