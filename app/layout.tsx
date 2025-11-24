@@ -6,6 +6,7 @@ import { Toaster } from "@/components/ui/toaster"
 import { Suspense } from 'react'
 import Script from 'next/script'
 import { ThemeProvider } from "@/components/theme-provider"
+import { getThemeNames } from "@/lib/themes"
 
 
 const nunito = Nunito({
@@ -39,8 +40,8 @@ export default function RootLayout({
       <body className={`bg-gray-100 dark:bg-gray-900`}>
           <ThemeProvider
             attribute="class"
-            defaultTheme="system"
-            enableSystem
+            defaultTheme="light"
+            themes={getThemeNames()}
             disableTransitionOnChange
           >
             <main  className={`overscroll-contain antialiased  text-foreground relative flex flex-col p-4 space-y-4 justify-start min-h-dvh max-w-xl mx-auto`}>

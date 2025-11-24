@@ -24,9 +24,9 @@ export function HelpScreen({
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                     transition={{ duration: 0.3, ease: "linear" }}
-            className={cn("absolute z-10 top-0 left-0 !my-0 h-full w-full space-y-4 bg-gray-100", className)} {...props}>   
+            className={cn("absolute z-10 top-0 left-0 !my-0 h-full w-full space-y-4 bg-gray-100 dark:bg-gray-900", className)} {...props}>   
             <div className={"p-4 flex flex-col items-stretch justify-stretch min-h-dvh max-w-xl mx-auto space-y-4"}>   
-                <div className="flex-grow flex flex-col p-8 bg-slate-200 rounded-lg">
+                <div className="flex-grow flex flex-col p-8 bg-background rounded-lg">
                     <div className="py-4">
                         <MessageCircleQuestion size={32} />
                     </div>
@@ -43,7 +43,7 @@ export function HelpScreen({
                                 Minimalist usage tracking is done with <Link className="underline" href="https://umami.is/" target="_blank" rel="noopener noreferrer">Umami</Link>.
                             </p>
                 </div>
-                <div className="flex-grow flex flex-col p-8 bg-slate-200 rounded-lg">
+                <div className="flex-grow flex flex-col p-8 bg-background rounded-lg">
                     <div className="py-4">
 
                         <BookText size={32} />
@@ -61,7 +61,7 @@ export function HelpScreen({
                         Try to make the best score by solving the grid in the least amount of moves.
                     </p>
                 </div>
-                <div className="flex-grow flex flex-col p-8 bg-slate-200 rounded-lg">
+                <div className="flex-grow flex flex-col p-8 bg-background rounded-lg">
                     <div className="py-4">
 
                         <Move size={32} />
@@ -79,7 +79,7 @@ export function HelpScreen({
                         Press space or restart button to restart the game.
                     </p>
                 </div>
-                <div className="flex-grow flex flex-col p-8 bg-slate-200 rounded-lg">
+                <div className="flex-grow flex flex-col p-8 bg-background rounded-lg">
                     <div className="py-4">
 
                         <SquareArrowOutUpRight size={32} />

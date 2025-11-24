@@ -64,7 +64,7 @@ export function EndScreen({
             className={cn("flex-grow flex flex-col gap-4", className)} {...props}>
 
     
-            <div className={cn("flex-grow relative flex flex-col p-4 bg-slate-200 rounded-lg", className)}>
+            <div className={cn("flex-grow relative flex flex-col p-4 bg-background rounded-lg", className)}>
                 <div className="absolute z-10 top-4 right-4 flex gap-2 ">
 
                 <motion.div whileHover={{ scale: 1.1 }} onClick={()=> copyToClipboard()} className="">
@@ -121,7 +121,7 @@ export function EndScreen({
         </>)}
         </div>
 
-            <motion.div whileHover={{ scale: 1.05 }} onClick={restart} className="flex justify-between items-center p-4 bg-slate-200 rounded-lg cursor-pointer">
+            <motion.div whileHover={{ scale: 1.05 }} onClick={restart} className="flex justify-between items-center p-4 bg-background rounded-lg cursor-pointer">
             <span className="font-bold text-xl">
                 Play again
             </span>
