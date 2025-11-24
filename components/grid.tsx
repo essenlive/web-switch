@@ -2,14 +2,9 @@ import { addPadding } from '@/lib/matrixHelpers';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from "motion/react";
 import { useMemo } from 'react';
+import { useTheme } from "next-themes";
+import { getTheme } from "@/lib/themes";
 
-const BLOCK_COLORS = [
-    'bg-gray-100 dark:bg-gray-900',
-    'bg-red-500 dark:bg-red-600',
-    'bg-blue-500 dark:bg-blue-600',
-    'bg-green-500 dark:bg-green-600',
-    'bg-yellow-500 dark:bg-yellow-600',
-];
 const BLOCK_VALUES = [
     '',
     '❤️',
@@ -29,7 +24,18 @@ export function Grid({
     className,
     ...props
 }) {
-    
+    const { theme } = useTheme();
+
+    const blockColors = useMemo(() => {
+        const currentTheme = getTheme(theme || 'dark');
+        return currentTheme?.blockColors || [
+            { bg: "hsl(0 0% 18%)", text: "hsl(0 0% 70%)" },
+            { bg: "hsl(0 90% 65%)", text: "hsl(0 0% 100%)" },
+            { bg: "hsl(217 100% 70%)", text: "hsl(0 0% 100%)" },
+            { bg: "hsl(142 80% 50%)", text: "hsl(0 0% 10%)" },
+            { bg: "hsl(45 100% 60%)", text: "hsl(0 0% 10%)" },
+        ];
+    }, [theme]);
 
     const indexes = useMemo(() => {
         return {
@@ -62,12 +68,13 @@ export function Grid({
                                 animate={{ opacity: 1 }}
                                 exit={{ opacity: 0 }}
                                 transition={transition}
-
+                                style={{
+                                    backgroundColor: cursor.y === y && cursor.x === x ? blockColors[cursor.value].bg : blockColors[cell].bg,
+                                    color: cursor.y === y && cursor.x === x ? blockColors[cursor.value].text : blockColors[cell].text
+                                }}
                                 className={cn(
                                     `column-${indexes.columns[x]}`,
-                                    "cursor-pointer aspect-square w-6 h-6 rounded-sm flex justify-center items-center align-middle text-center",
-                                    BLOCK_COLORS[cell],
-                                    cursor.y === y && cursor.x === x && BLOCK_COLORS[cursor.value]
+                                    "cursor-pointer aspect-square w-6 h-6 rounded-sm flex justify-center items-center align-middle text-center font-semibold text-xs"
                                 )}
                             >
                                 {showValues && (cursor.y === y && cursor.x === x) ? BLOCK_VALUES[cursor.value] : showValues && BLOCK_VALUES[cell]}
