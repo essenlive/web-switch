@@ -39,7 +39,7 @@ export function Grid({
     }, [canva, canvaIndexes]);
 
     return (
-        <div className={cn("flex-grow flex items-center justify-center flex-col-reverse  gap-2", className)} {...props}>
+        <div className={cn("grow flex items-center justify-center flex-col-reverse  gap-2", className)} {...props}>
 
             <AnimatePresence>
                  {addPadding(canva, 0).map((row, y) => (

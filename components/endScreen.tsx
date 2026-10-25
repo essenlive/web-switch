@@ -68,10 +68,10 @@ export function EndScreen({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0, position: "absolute" }}
             transition={{ duration: 0.1, ease: "linear" }}
-            className={cn("flex-grow flex flex-col gap-4", className)} {...props}>
+            className={cn("grow flex flex-col gap-4", className)} {...props}>
 
     
-            <div className={cn("flex-grow relative flex flex-col p-4 bg-background rounded-lg", className)}>
+            <div className={cn("grow relative flex flex-col p-4 bg-background rounded-lg", className)}>
                 <div className="absolute z-10 top-4 right-4 flex gap-2 ">
 
                 <motion.div whileHover={{ scale: 1.1 }} onClick={()=> copyToClipboard()} className="">
@@ -93,7 +93,7 @@ export function EndScreen({
                     <h2 className="text-2xl font-bold ">
                         Easy first !
                     </h2>
-                    <p className="flex-grow text-xl my-4">
+                    <p className="grow text-xl my-4">
                         You solved the grid in <span className="font-bold">{score}</span> moves, that makes it the first score to beat.
                     </p>
                 </>
@@ -107,7 +107,7 @@ export function EndScreen({
                     <h2 className="text-2xl font-bold ">
                         New highscore !
                     </h2>
-                    <p className="flex-grow text-xl my-4">
+                    <p className="grow text-xl my-4">
                                 You solved the grid in <span className="font-bold">{score}</span> moves. It is <span className="font-bold">{Math.abs(score - highscore)}</span> moves less than the previous best.
                     </p>
                 </>
@@ -119,7 +119,7 @@ export function EndScreen({
                     <h2 className="text-2xl font-bold ">
                         Good Job !
                     </h2>
-                    <p className="flex-grow text-xl my-4">
+                    <p className="grow text-xl my-4">
                         You solved the grid in <span className="font-bold">{score}</span> moves. Now try to beat the highscore of <span className="font-bold">{highscore}</span> moves.
                     </p>
             </>

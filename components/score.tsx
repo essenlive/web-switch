@@ -16,7 +16,7 @@ export function Score({
 
     return (
         <div className={cn("flex space-x-4 w-full", className)} {...props}>
-            <div className="flex-grow flex  items-center p-3 bg-background rounded-lg">
+            <div className="grow flex  items-center p-3 bg-background rounded-lg">
                 <MoveHorizontal />
                 <span className="ml-4 text-xl font-bold">
                     {score}
@@ -35,7 +35,7 @@ export function Score({
                 <RotateCcw />
             </motion.div>
 
-            <div className="flex-grow flex justify-end items-center p-3 bg-background rounded-lg">
+            <div className="grow flex justify-end items-center p-3 bg-background rounded-lg">
                 <span className="mr-4 text-xl font-bold">
                     {highscore === null ? "-" : highscore}
                 </span>

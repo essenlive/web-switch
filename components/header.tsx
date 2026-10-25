@@ -18,8 +18,8 @@ export function Header({
     return (
         <>
             <header className={cn("flex space-x-4 w-full", className)} {...props}>
-                <Link href="/" className="flex-grow">
-                    <motion.div whileHover={{ scale: 1.05 }} className="flex-grow flex  items-center p-3 font-bold bg-background rounded-lg">
+                <Link href="/" className="grow">
+                    <motion.div whileHover={{ scale: 1.05 }} className="grow flex  items-center p-3 font-bold bg-background rounded-lg">
     
                     <ArrowUpDown  className="text-foreground" />
                     <h1 className="ml-4 text-2xl uppercase text-foreground">
