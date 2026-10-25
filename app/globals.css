@@ -193,6 +193,41 @@ body {
     --tile-ink-3: #0b2425;
     --tile-ink-4: #3a2c0a;
   }
+
+  /* Palettes from the colour book: Faro (Portugal), La Havane (Cuba), Darjeeling (India) */
+  .faro {
+    --page: #f7ebdc;
+    --tile-1: #f39118;
+    --tile-2: #3a3f3d;
+    --tile-3: #98c11e;
+    --tile-4: #a2d6da;
+    --tile-ink-1: #1f2428;
+    --tile-ink-2: #ffffff;
+    --tile-ink-3: #1f2428;
+    --tile-ink-4: #1f2428;
+  }
+  .havane {
+    --page: #fdf8cc;
+    --tile-1: #cf82b6;
+    --tile-2: #239ad7;
+    --tile-3: #8cc9aa;
+    --tile-4: #f9b459;
+    --tile-ink-1: #1f2428;
+    --tile-ink-2: #1f2428;
+    --tile-ink-3: #1f2428;
+    --tile-ink-4: #1f2428;
+  }
+  .darjeeling {
+    --page: #e6e2de;
+    --tile-1: #e34e29;
+    --tile-2: #6ca6db;
+    --tile-3: #98c11e;
+    --tile-4: #ec7d80;
+    --tile-ink-1: #1f2428;
+    --tile-ink-2: #1f2428;
+    --tile-ink-3: #1f2428;
+    --tile-ink-4: #1f2428;
+  }
 }
 
 body {

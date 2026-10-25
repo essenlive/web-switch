@@ -6,6 +6,9 @@ export const THEMES = [
   { id: 'ittoqqortoormiit', name: 'Ittoqqortoormiit' },
   { id: 'lecap', name: 'Le Cap' },
   { id: 'copenhague', name: 'Copenhague' },
+  { id: 'faro', name: 'Faro' },
+  { id: 'havane', name: 'La Havane' },
+  { id: 'darjeeling', name: 'Darjeeling' },
 ] as const
 
 export type ThemeId = (typeof THEMES)[number]['id']
