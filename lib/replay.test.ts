@@ -2,9 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { buildFrames, encodeMoves, parseMoves, parseReplayInput, replayLink } from '@/lib/replay';
 
 describe('parseMoves', () => {
-  it('reads letters and share-button arrows', () => {
-    expect(parseMoves('urDl')).toEqual(['up', 'right', 'down', 'left']);
-    expect(parseMoves('⬆️ ➡️ ⬇️ ⬅️')).toEqual(['up', 'right', 'down', 'left']);
+  it('reads move letters', () => {
+    expect(parseMoves('urdl')).toEqual(['up', 'right', 'down', 'left']);
+    expect(parseMoves('⬆️')).toBeNull();
     expect(parseMoves('')).toEqual([]);
     expect(parseMoves('ux')).toBeNull();
   });
@@ -15,8 +15,7 @@ describe('parseReplayInput', () => {
     const { request } = parseReplayInput('https://switch.essenlive.xyz/g?s=abc&cs=6x8&i=ul');
     expect(request).toEqual({ query: '?s=abc&cs=6x8', moves: ['up', 'left'], times: undefined });
   });
-  it('lets the moves field win and rejects bad links', () => {
-    expect(parseReplayInput('?s=abc&cs=6x8&i=u', 'dd').request?.moves).toEqual(['down', 'down']);
+  it('rejects bad links', () => {
     expect(parseReplayInput('nope').error).not.toBeNull();
     expect(parseReplayInput('?cs=6x8').error).toMatch(/not valid/);
   });

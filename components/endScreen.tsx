@@ -2,9 +2,7 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
-import { Share2, TextQuote, CircleArrowRight, Clapperboard } from "lucide-react"
-import Link from "next/link"
-import { encodeMoves } from "@/lib/replay"
+import { Share2, TextQuote, CircleArrowRight } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { motion, AnimatePresence} from "motion/react"
 import { getMatrixString } from "@/lib/matrixHelpers"
@@ -102,9 +100,6 @@ export function EndScreen({
                     </Button>
                     <Button variant="secondary" aria-label="Share with my moves" title="Share with my moves" onClick={() => copyToClipboard("withInputs")}>
                         <TextQuote />
-                    </Button>
-                    <Button variant="secondary" size="icon" aria-label="Watch the replay" title="Watch the replay" asChild>
-                        <Link href={`/replay${url}&i=${encodeMoves(inputsList)}`}><Clapperboard /></Link>
                     </Button>
                 </div>
                 {friendCode && (

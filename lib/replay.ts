@@ -3,16 +3,15 @@ import switchMachine, { type Direction } from '@/lib/switchMachine';
 import { matrixFromParams } from '@/lib/matrixHelpers';
 
 const CODES: Record<string, Direction> = { u: 'up', r: 'right', d: 'down', l: 'left' };
-const ARROWS: Record<string, Direction> = { '⬆': 'up', '➡': 'right', '⬇': 'down', '⬅': 'left' };
 const LETTERS = Object.fromEntries(Object.entries(CODES).map(([k, v]) => [v, k]));
 
 export const encodeMoves = (moves: Direction[]) => moves.map(m => LETTERS[m]).join('');
 
-// "urdl", "u r d l" or "⬆️ ➡️ ⬇️ ⬅️" (what the share button copies) -> directions, null if anything else is in there
+// "urdl" -> directions, null if anything else is in there
 export function parseMoves(text: string): Direction[] | null {
   const moves: Direction[] = [];
-  for (const ch of text.replace(/[\s,]|️/g, '')) {
-    const dir = CODES[ch.toLowerCase()] ?? ARROWS[ch];
+  for (const ch of text) {
+    const dir = CODES[ch];
     if (!dir) return null;
     moves.push(dir);
   }
@@ -25,15 +24,13 @@ export interface ReplayRequest {
   times?: number[];     // time challenge only, ms since the first move
 }
 
-// Takes anything a player has at hand: a full game link, a `/replay` link or a bare query string.
-// Moves come from the `i` param (or `moves`), the grid from the rest.
-export function parseReplayInput(text: string, movesText = ''): { request: ReplayRequest | null; error: string | null } {
+// Reads a `/replay` link: the moves are the `i` param, the grid is the rest.
+export function parseReplayInput(text: string): { request: ReplayRequest | null; error: string | null } {
   const start = text.indexOf('?');
-  if (start < 0) return { request: null, error: 'Paste a game link, it should contain ?s=… or ?c=…' };
+  if (start < 0) return { request: null, error: 'This replay link is incomplete.' };
   const p = new URLSearchParams(text.slice(start).split('#')[0]);
-  const rawMoves = movesText.trim() || p.get('i') || '';
-  const moves = parseMoves(rawMoves);
-  if (!moves) return { request: null, error: 'Moves can only be u, d, l, r or arrows.' };
+  const moves = parseMoves(p.get('i') || '');
+  if (!moves) return { request: null, error: 'Moves can only be u, d, l or r.' };
   const { validParams, error, input } = matrixFromParams({
     s: p.get('s') || '', cs: p.get('cs') || '', c: p.get('c') || '', t: p.get('t') || '',
   });

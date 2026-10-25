@@ -2,21 +2,19 @@
 
 import { MotionConfig } from 'motion/react'
 import { Suspense, useEffect, useMemo, useState } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import { Pause, Play, RotateCcw, StepBack, StepForward } from 'lucide-react'
 import { Grid } from '@/components/grid'
 import { InputList } from '@/components/inputList'
 import { ReplayChart } from '@/components/replayChart'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { buildFrames, parseReplayInput, replayLink } from '@/lib/replay'
+import { buildFrames, parseReplayInput } from '@/lib/replay'
 
 const SPEEDS = [0.5, 1, 2, 4]
 const STEP_MS = 700 // one move per step at 1x
 
 function ReplayPage() {
-  const router = useRouter()
   const params = useSearchParams()
   const query = params.toString() ? `?${params.toString()}` : ''
 
@@ -58,16 +56,6 @@ function ReplayPage() {
     return () => window.removeEventListener('keydown', onKey)
   })
 
-  const [link, setLink] = useState('')
-  const [moves, setMoves] = useState('')
-  const [formError, setFormError] = useState<string | null>(null)
-  const load = (e: React.FormEvent) => {
-    e.preventDefault()
-    const { request: r, error } = parseReplayInput(link, moves)
-    setFormError(error)
-    if (r) router.push(replayLink(r))
-  }
-
   const frame = frames[index]
   const moveList = useMemo(() => request?.moves ?? [], [request])
   const stats = frame && [
@@ -80,33 +68,11 @@ function ReplayPage() {
   return (
     <MotionConfig reducedMotion="user">
     <main className="grow flex flex-col items-stretch justify-stretch h-full w-full space-y-2">
-      {/* Replays mostly arrive as links (end screen, leaderboard, profile): the form is for pasting one, so it steps aside once a replay plays */}
-      {frame ? (
-        <details className="p-4 bg-background rounded-lg">
-          <summary className="cursor-pointer text-sm font-bold text-muted-foreground rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">Load another replay</summary>
-          <div className="pt-3">
-      <form onSubmit={load} className="flex flex-col gap-2">
-        <Label htmlFor="replay-link">Game link</Label>
-        <Input id="replay-link" value={link} onChange={e => setLink(e.target.value)} placeholder="https://switch.essenlive.xyz/g?s=…&cs=6x8" />
-        <Label htmlFor="replay-moves">Moves <span className="text-muted-foreground">(optional if the link has them)</span></Label>
-        <Input id="replay-moves" value={moves} onChange={e => setMoves(e.target.value)} placeholder="urdlurdl or ⬆️ ➡️ ⬇️ ⬅️" />
-        <Button type="submit" className="self-start">Load replay</Button>
-        {(formError || inputError) && <p role="alert" className="text-sm text-destructive">{formError ?? inputError}</p>}
-      </form>
-          </div>
-        </details>
-      ) : (
+      {!frame && (
         <div className="flex flex-col gap-2 p-4 bg-background rounded-lg">
-          <h2 className="text-sm font-bold text-muted-foreground">Replay a game</h2>
-          <p>Paste a game link, with its moves, to watch it play back. Replays also open from the end screen, the leaderboard and your profile.</p>
-      <form onSubmit={load} className="flex flex-col gap-2">
-        <Label htmlFor="replay-link">Game link</Label>
-        <Input id="replay-link" value={link} onChange={e => setLink(e.target.value)} placeholder="https://switch.essenlive.xyz/g?s=…&cs=6x8" />
-        <Label htmlFor="replay-moves">Moves <span className="text-muted-foreground">(optional if the link has them)</span></Label>
-        <Input id="replay-moves" value={moves} onChange={e => setMoves(e.target.value)} placeholder="urdlurdl or ⬆️ ➡️ ⬇️ ⬅️" />
-        <Button type="submit" className="self-start">Load replay</Button>
-        {(formError || inputError) && <p role="alert" className="text-sm text-destructive">{formError ?? inputError}</p>}
-      </form>
+          <h2 className="text-sm font-bold text-muted-foreground">Replay</h2>
+          <p role={inputError ? 'alert' : undefined} className={inputError ? 'text-destructive' : undefined}>{inputError ?? 'Replays open from a score.'}</p>
+          <p>Pick one from your <Link href="/community" className="underline font-bold">highscores</Link> or a <Link href="/leaderboard" className="underline font-bold">leaderboard</Link>.</p>
         </div>
       )}
 
