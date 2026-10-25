@@ -1,41 +1,32 @@
 "use client"
 
 import * as React from "react"
-import { Moon, Sun } from "lucide-react"
+import { Moon, Sun, Monitor } from "lucide-react"
 import { useTheme } from "next-themes"
 import { motion } from "motion/react"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 
+const NEXT = { light: "dark", dark: "system", system: "light" } as const
+const ICONS = { light: Sun, dark: Moon, system: Monitor }
+
+// One tap cycles light -> dark -> system
 export function ModeToggle() {
-  const { setTheme } = useTheme()
+  const { theme, setTheme } = useTheme()
+  const [mounted, setMounted] = React.useState(false)
+  React.useEffect(() => setMounted(true), [])
+
+  const current = (mounted && theme && theme in NEXT ? theme : "system") as keyof typeof NEXT
+  const Icon = ICONS[current]
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-                <motion.div 
-                whileHover={{ scale: 1.1 }} 
-                className="flex justify-center items-center aspect-square cursor-pointer bg-background rounded-lg">
-                    <Sun className="h-[1.2rem] w-[1.2rem] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0 text-foreground" />
-                    <Moon className="absolute h-[1.2rem] w-[1.2rem] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100 text-foreground"/>
-                    <span className="sr-only">Toggle theme</span>
-                </motion.div>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={() => setTheme("light")}>
-          Light
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => setTheme("dark")}>
-          Dark
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => setTheme("system")}>
-          System
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <motion.button
+      type="button"
+      aria-label={`Theme: ${current}. Switch to ${NEXT[current]}`}
+      title={`Theme: ${current}`}
+      whileHover={{ scale: 1.1 }}
+      whileTap={{ scale: 0.95 }}
+      onClick={() => setTheme(NEXT[current])}
+      className="flex justify-center items-center p-3 aspect-square shrink-0 cursor-pointer bg-background text-foreground rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+      <Icon size={24} />
+    </motion.button>
   )
 }
