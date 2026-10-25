@@ -122,7 +122,7 @@ Traps found while reading:
 
 ## 8. Time challenge
 
-URL `?s=…&cs=WxH&t=true` (seed required). Clock starts at the first move attempt; the grid grows by one line every `growMs(canva)` (1000 ms × the smallest side of the current grid + a fixed 5000 ms, e.g. 12x9 → 14000 ms) and the countdown restarts whenever a line is removed (row on top, then column on the right, alternating; new line from `growLine(seed, index)`), and the game is lost when a side exceeds `MAX_SIDE` (`Game_Over`).
+URL `?s=…&cs=WxH&t=true` (seed required). Clock starts at the first move attempt; the grid grows by one line every `growMs(canva)` (1000 ms × the smallest side of the current grid, e.g. 12x9 → 9000 ms) and the countdown restarts whenever a line is removed (row on top, then column on the right, alternating; new line from `growLine(seed, index)`), and the game is lost when a side exceeds `MAX_SIDE` (`Game_Over`).
 
 - The machine never reads a clock. `input_move` and `tick` events carry `at` (ms since the clock started). In `Game_Idle`, if `at - clockBase >= growMs`, one growth step runs (`clockBase` then advances by `growMs`), the grid is evaluated, and the event is re-raised until no growth is due; then the move is played.
 - The page sends `tick` every 250 ms and `at` with every move. Because growth depends only on `at` and the removals, a replay without ticks reaches the same states.
