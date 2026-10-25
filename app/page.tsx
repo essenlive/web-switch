@@ -25,7 +25,7 @@ export default function Home() {
             cs: '6x8'
           },
         }} >
-        <motion.div whileHover={{ scale: 1.05 }} className="grow flex flex-col p-4 bg-background cursor-pointer rounded-lg"> 
+        <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="grow flex flex-col p-4 bg-background cursor-pointer rounded-lg"> 
           <div className="py-4">
 
             <Sunrise size={32} />
@@ -54,7 +54,7 @@ export default function Home() {
             cs: '6x8'
           },
         }} >
-        <motion.div whileHover={{ scale: 1.05 }} className="grow flex flex-col p-4 bg-background  rounded-lg "> 
+        <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="grow flex flex-col p-4 bg-background  rounded-lg "> 
           <div className="py-4">
 
             <Dices size={32} />
@@ -84,7 +84,7 @@ export default function Home() {
             t: 'true'
           },
         }} >
-        <motion.div whileHover={{ scale: 1.05 }} className="grow flex flex-col p-4 bg-background cursor-pointer rounded-lg">
+        <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="grow flex flex-col p-4 bg-background cursor-pointer rounded-lg">
 
           <div className="py-4">
 

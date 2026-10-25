@@ -20,7 +20,7 @@ export function Score({
                 <MoveHorizontal aria-hidden />
                 <span className="ml-4 flex flex-col leading-none">
                     <span className="text-xs text-muted-foreground">moves</span>
-                    <span className="text-xl font-bold" aria-hidden>{score}</span>
+                    <motion.span key={score} initial={score ? { y: 6, opacity: 0 } : false} animate={{ y: 0, opacity: 1 }} transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }} className="text-xl font-bold" aria-hidden>{score}</motion.span>
                 </span>
                 <span role="status" className="sr-only">{score} moves</span>
                 {growIn !== null && (

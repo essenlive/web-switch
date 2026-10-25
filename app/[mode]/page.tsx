@@ -146,6 +146,8 @@ const [localHighscoresInputs, setLocalHighscoresInputs] = useLocalStorage<object
               canva={snapshot.context.canva}
               canvaIndexes={snapshot.context.canvaIndexes}
               cursor={snapshot.context.cursor}
+              lastMove={snapshot.context.inputList.at(-1) ?? null}
+              moveId={snapshot.context.score}
             />
           </div>
         )}

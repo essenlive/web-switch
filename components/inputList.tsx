@@ -13,6 +13,7 @@ const DIRECTION_ARROWS = new Map(Object.entries({
 
 const transition = {
     duration: 0.2,
+    ease: [0.16, 1, 0.3, 1] as const,
 }
 
 export function InputList({
@@ -47,15 +48,14 @@ export function InputList({
 
                             <motion.div
                                 ref={i === inputIndex ? scrollToRef : null}
-                                whileHover={{ scale: 1.05 }}
                                 key={`input-${i}`}
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
+                                initial={{ opacity: 0, scale: 0.8 }}
+                                animate={{ opacity: 1, scale: 1 }}
                                 exit={{ opacity: 0 }}
                                 transition={transition}
                                 className={cn(
                                     i === inputIndex && "bg-background ring-foreground ring-1 ring-inset",
-                                    "cursor-pointer aspect-square w-6 h-6 rounded-sm flex justify-center items-center align-middle text-center"
+                                    "aspect-square w-6 h-6 rounded-sm flex justify-center items-center align-middle text-center"
                                 )}
                             >
                                 {DIRECTION_ARROWS.get(input)}

@@ -78,10 +78,10 @@ export function EndScreen({
         { visible && (
         <motion.div 
             key="endScreen"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, position: "absolute" }}
-            transition={{ duration: 0.1, ease: "linear" }}
+            transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
             className={cn("flex flex-col gap-4", className)} {...props}>
 
             <div className="flex flex-col p-4 bg-background rounded-lg gap-4">
