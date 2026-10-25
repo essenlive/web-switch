@@ -72,15 +72,19 @@ export function resetKey(): string | null {
   return getMyPubkey();
 }
 
-export function subscribeScores(url: string, authors: string[] | null, onScore: (s: CommunityScore) => void, onRemoved?: (pubkey: string, at: number) => void) {
+// One subscription for several grids (a month of daily grids): the 200 limit is per grid, the relays may cap it lower.
+export function subscribeScores(urls: string[], authors: string[] | null, onScore: (s: CommunityScore) => void, onRemoved?: (url: string, pubkey: string, at: number) => void) {
   const sub = getPool().subscribeMany(RELAYS,
-    { kinds: [SCORE_KIND], '#d': [dTag(url)], ...(authors ? { authors } : { limit: 200 }) },
+    { kinds: [SCORE_KIND], '#d': urls.map(dTag), ...(authors ? { authors } : { limit: 200 * urls.length }) },
     { onevent(event: Event) {
         if (authors && !authors.includes(event.pubkey)) return; // un relais peut renvoyer autre chose
+        const d = event.tags.find(t => t[0] === 'd')?.[1];
+        const url = urls.find(u => dTag(u) === d);
+        if (!url) return;
         const s = scoreFromEvent(event, url);
         if (s) return onScore(s);
         const at = removalFromEvent(event, url);
-        if (at !== null) onRemoved?.(event.pubkey, at);
+        if (at !== null) onRemoved?.(url, event.pubkey, at);
     } });
   return () => sub.close();
 }

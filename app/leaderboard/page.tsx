@@ -4,9 +4,11 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { Leaderboard } from '@/components/leaderboard';
-import { MyScores } from '@/components/myScores';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { ScoreCalendar, monthOf, monthUrls } from '@/components/scoreCalendar';
+import { useCommunity } from '@/hooks/useCommunity';
+import { useCommunityScores } from '@/hooks/useCommunityScores';
 import { Label } from '@/components/ui/label';
 import { getDailyString } from '@/lib/utils';
 import { modeOfUrl, parseGrid } from '@/lib/highscores';
@@ -24,26 +26,33 @@ const playPath = (url: string) => `${modeOfUrl(url) === 'random' ? '/r' : '/g'}$
 export default function LeaderboardPage() {
   const params = useSearchParams();
   const shared = params.get('u'); // a specific grid, e.g. from "Leaderboard" next to a personal best
-  const [tab, setTab] = useState<'board' | 'scores'>(params.get('tab') === 'scores' ? 'scores' : 'board');
   const [view, setView] = useState<View>(shared ? 'grid' : 'daily');
   const [day, setDay] = useState(''); // filled after mount: the local date differs between server and client
   const [gridText, setGridText] = useState(shared ?? '');
-  useEffect(() => { setDay(toDay(getDailyString())); }, []);
+  const [month, setMonth] = useState('');
+  const [world, setWorld] = useState(false);
+  const today = toDay(getDailyString());
+  useEffect(() => { setDay(today); setMonth(monthOf(today)); }, [today]);
 
+  const { nickname, following, myPubkey } = useCommunity();
   const seed = day.replaceAll('-', '');
   const gridUrl = parseGrid(gridText);
-  const url = view === 'grid' ? gridUrl : seed ? `?s=${seed}&cs=${CS}${view === 'time' ? '&t=true' : ''}` : null;
+  const suffix = view === 'time' ? '&t=true' : '';
+  const url = view === 'grid' ? gridUrl : seed ? `?s=${seed}&cs=${CS}${suffix}` : null;
+  // one subscription for the whole month shown, plus the selected day when it is in another month
+  const urls = view === 'grid' ? (gridUrl ? [gridUrl] : []) : month ? [...new Set([...monthUrls(month, today, suffix), ...(url ? [url] : [])])] : [];
+  const authors = world ? null : [...(nickname && myPubkey ? [myPubkey] : []), ...following.map(f => f.pubkey)];
+  const { scores, isLoading } = useCommunityScores(urls, authors);
 
   return (
     <div className="flex flex-col gap-2">
       <h1 className="sr-only">Leaderboard</h1>
-      <div role="group" aria-label="Page section" className="flex gap-2">
-        <Button className="h-11 grow text-base rounded-lg" variant={tab === 'board' ? 'default' : 'outline'} aria-pressed={tab === 'board'} onClick={() => setTab('board')}>Leaderboard</Button>
-        <Button className="h-11 grow text-base rounded-lg" variant={tab === 'scores' ? 'default' : 'outline'} aria-pressed={tab === 'scores'} onClick={() => setTab('scores')}>My scores</Button>
+      <div role="group" aria-label="Ranking scope" className="flex gap-2">
+        <Button className="h-11 grow text-base rounded-lg" variant={world ? 'outline' : 'default'} aria-pressed={!world} onClick={() => setWorld(false)}>My community</Button>
+        <Button className="h-11 grow text-base rounded-lg" variant={world ? 'default' : 'outline'} aria-pressed={world} onClick={() => setWorld(true)}>World</Button>
       </div>
 
-      {tab === 'board' && (
-        <div className="flex flex-col gap-3 p-4 bg-background rounded-lg">
+      <div className="flex flex-col gap-3 p-4 bg-background rounded-lg">
             <div role="group" aria-label="Leaderboard mode" className="flex flex-wrap gap-2">
               {VIEWS.map(v => (
                 <Button key={v.id} className="h-11" variant={view === v.id ? 'default' : 'outline'} aria-pressed={view === v.id} onClick={() => setView(v.id)}>{v.label}</Button>
@@ -60,17 +69,14 @@ export default function LeaderboardPage() {
               </>
             ) : (
               <>
-                <Label htmlFor="day">{view === 'time' ? 'Time challenge of' : 'Daily grid of'}</Label>
-                <div className="flex gap-2">
-                  <Input id="day" className="h-11 min-w-0" type="date" value={day} max={toDay(getDailyString())} onChange={e => e.target.value && setDay(e.target.value)} />
-                  {url && <Button asChild className="h-11 shrink-0"><Link href={playPath(url)}>Play this grid</Link></Button>}
-                </div>
+                <ScoreCalendar month={month} today={today} day={day} suffix={suffix} scores={scores} myPubkey={myPubkey} world={world}
+                  onMonth={setMonth} onDay={d => { setDay(d); setMonth(monthOf(d)); }} />
+                {url && <Button asChild className="h-11"><Link href={playPath(url)}>Play {day}</Link></Button>}
               </>
             )}
-        </div>
-      )}
+      </div>
 
-      {tab === 'board' ? (url && <Leaderboard url={url} />) : <MyScores />}
+      {url && <Leaderboard url={url} all={scores} isLoading={isLoading} />}
     </div>
   );
 }

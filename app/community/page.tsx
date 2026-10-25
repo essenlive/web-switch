@@ -100,7 +100,7 @@ export default function Community() {
 
       <section className={tray}>
         <h2 className="text-xl font-bold">Your scores</h2>
-        <p>Replay or remove your highscores on the <Link href="/leaderboard?tab=scores" className="underline font-bold">leaderboard page</Link>.</p>
+        <p>Replay or remove your highscores on the <Link href="/leaderboard" className="underline font-bold">leaderboard page</Link>.</p>
       </section>
 
       {(nickname || following.length > 0) && (

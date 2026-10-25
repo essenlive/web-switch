@@ -4,7 +4,7 @@ import { Share2, CircleArrowRight } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { motion, AnimatePresence} from "motion/react"
 import { getMatrixString } from "@/lib/matrixHelpers"
-import { Leaderboard } from "@/components/leaderboard"
+import { ScopedLeaderboard } from "@/components/leaderboard"
 
 export function EndScreen({
     className,
@@ -76,7 +76,7 @@ export function EndScreen({
                 </div>
             </div>
 
-            <Leaderboard url={url} />
+            <ScopedLeaderboard url={url} />
 
             <Button className="h-14 justify-between text-xl font-bold" onClick={restart}>
                 Play again

@@ -7,24 +7,18 @@ import { Clapperboard, Trash2, UserMinus, UserPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useCommunity } from '@/hooks/useCommunity';
 import { useCommunityScores } from '@/hooks/useCommunityScores';
-import { formatRank } from '@/lib/scoreEvent';
+import { formatRank, type CommunityScore } from '@/lib/scoreEvent';
 import { replayLink } from '@/lib/replay';
 
 const iconBtn = 'inline-flex shrink-0 cursor-pointer rounded-sm p-1 text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';
 
-export function Leaderboard({ url }: { url: string }) {
+export function Leaderboard({ url, all, isLoading }: { url: string; all: CommunityScore[]; isLoading: boolean }) {
   const { nickname, following, myPubkey, addFollowing, removeFollowing, removeHighscore } = useCommunity();
-  const [world, setWorld] = useState(false);
+  const scores = all.filter(s => s.url === url);
   const [removedUrl, setRemovedUrl] = useState<string | null>(null); // the relays do not echo our own removal back
-  const authors = world ? null : [...(nickname && myPubkey ? [myPubkey] : []), ...following.map(f => f.pubkey)];
-  const { scores, isLoading } = useCommunityScores(url, authors);
 
   return (
     <div className="flex flex-col gap-3 p-4 bg-background rounded-lg">
-      <div className="flex gap-2">
-        <Button variant={world ? 'outline' : 'default'} onClick={() => setWorld(false)}>My community</Button>
-        <Button variant={world ? 'default' : 'outline'} onClick={() => setWorld(true)}>World</Button>
-      </div>
       {!nickname && (
         <p><Link href="/community" className="underline font-bold">Pick a nickname</Link> to publish your scores.</p>
       )}
@@ -63,6 +57,23 @@ export function Leaderboard({ url }: { url: string }) {
           })}
         </ol>
       )}
+    </div>
+  );
+}
+
+// Self-contained version with its own My community / World toggle, for the end screen
+export function ScopedLeaderboard({ url }: { url: string }) {
+  const { nickname, following, myPubkey } = useCommunity();
+  const [world, setWorld] = useState(false);
+  const authors = world ? null : [...(nickname && myPubkey ? [myPubkey] : []), ...following.map(f => f.pubkey)];
+  const { scores, isLoading } = useCommunityScores([url], authors);
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex gap-2">
+        <Button variant={world ? 'outline' : 'default'} onClick={() => setWorld(false)}>My community</Button>
+        <Button variant={world ? 'default' : 'outline'} onClick={() => setWorld(true)}>World</Button>
+      </div>
+      <Leaderboard url={url} all={scores} isLoading={isLoading} />
     </div>
   );
 }
