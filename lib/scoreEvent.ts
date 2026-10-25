@@ -31,6 +31,8 @@ export interface CommunityScore {
   won: boolean;  // false only in the time challenge (grid outgrew the limit)
   rank: number;  // lower is better, see rankOf
   timestamp: number;
+  inputs: Direction[]; // the verified moves, so the score can be replayed
+  times?: number[];
 }
 
 // One sortable number, so local highscores, sorting and "is this a record" share a single rule.
@@ -80,7 +82,7 @@ export function scoreFromEvent(event: Event, url: string): CommunityScore | null
     } else if (p.times !== undefined || p.end !== undefined) return null;
     const r = replay(url, p.inputs, p.times, p.end);
     if (r === null) return null;
-    return { pubkey: event.pubkey, nickname: p.nickname, url, score: r.moves, won: r.won, rank: r.rank, timestamp: event.created_at * 1000 };
+    return { pubkey: event.pubkey, nickname: p.nickname, url, score: r.moves, won: r.won, rank: r.rank, timestamp: event.created_at * 1000, inputs: p.inputs, times: p.times };
   } catch {
     return null;
   }
