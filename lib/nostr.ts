@@ -10,7 +10,7 @@ const KEY = STORAGE_KEYS.key;
 let pool: SimplePool | null = null;
 const getPool = () => (pool ??= new SimplePool());
 
-function getSecretKey(): Uint8Array | null { // crée la clé au premier usage
+function getSecretKey(): Uint8Array | null { // creates the key on first use
   if (typeof window === 'undefined') return null;
   try {
     let hex = localStorage.getItem(KEY);
@@ -35,7 +35,7 @@ export function publishScore(url: string, payload: Omit<ScorePayload, 'v'>): voi
   const event = finalizeEvent(
     { kind: SCORE_KIND, created_at: Math.floor(Date.now() / 1000),
       tags: [['d', dTag(url)], ['t', APP]], content: JSON.stringify({ v: 1, ...payload }) }, sk);
-  getPool().publish(RELAYS, event).forEach(p => p.catch(() => {})); // best effort, un relais suffit
+  getPool().publish(RELAYS, event).forEach(p => p.catch(() => {})); // best effort, one relay is enough
 }
 
 // Removes a score: overwrites it with a tombstone (what relays reliably honour), then asks for a NIP-09 deletion too.
@@ -77,7 +77,7 @@ export function subscribeScores(urls: string[], authors: string[] | null, onScor
   const sub = getPool().subscribeMany(RELAYS,
     { kinds: [SCORE_KIND], '#d': urls.map(dTag), ...(authors ? { authors } : { limit: 200 * urls.length }) },
     { onevent(event: Event) {
-        if (authors && !authors.includes(event.pubkey)) return; // un relais peut renvoyer autre chose
+        if (authors && !authors.includes(event.pubkey)) return; // a relay may return something else
         const d = event.tags.find(t => t[0] === 'd')?.[1];
         const url = urls.find(u => dTag(u) === d);
         if (!url) return;

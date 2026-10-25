@@ -2,10 +2,12 @@ import { verifyEvent, type Event } from 'nostr-tools/pure';
 import { createActor } from 'xstate';
 import switchMachine, { type Direction } from '@/lib/switchMachine';
 import { matrixFromParams } from '@/lib/matrixHelpers';
+import { APP, rankOf } from '@/lib/highscores';
 
-export const SCORE_KIND = 30078; // NIP-78, remplaçable par (pubkey, d)
-export const APP = 'switch';
-// Le défi = la query de la grille (`?s=seed&cs=6x8` ou `?c=...&cs=...`)
+export { APP, rankOf, formatRank } from '@/lib/highscores';
+
+export const SCORE_KIND = 30078; // NIP-78, replaceable per (pubkey, d)
+// The challenge = the grid query (`?s=seed&cs=6x8` ou `?c=...&cs=...`)
 export const dTag = (url: string) => `${APP}:${url}`;
 
 const DIRECTIONS: Direction[] = ['up', 'left', 'down', 'right'];
@@ -34,11 +36,6 @@ export interface CommunityScore {
   inputs: Direction[]; // the verified moves, so the score can be replayed
   times?: number[];
 }
-
-// One sortable number, so local highscores, sorting and "is this a record" share a single rule.
-// Win: its moves (< 1000, same as before the time challenge). Loss: 1000 x smallest grid area reached + moves.
-export const rankOf = (won: boolean, moves: number, minArea: number) => won ? moves : 1000 * minArea + moves;
-export const formatRank = (rank: number) => rank < 1000 ? `${rank} moves` : `lost, down to ${Math.floor(rank / 1000)} tiles`;
 
 // Replays the moves on the real machine: returns the result, or null if the game did not end exactly with the last move.
 export function replay(url: string, inputs: Direction[], times?: number[], end?: number): { won: boolean; moves: number; rank: number } | null {

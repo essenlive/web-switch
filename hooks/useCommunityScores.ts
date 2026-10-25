@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { subscribeScores } from '@/lib/nostr';
 import type { CommunityScore } from '@/lib/scoreEvent';
 
-// urls = the grids to load ; authors = null -> mondial ; [] -> pas d'abonnement
+// urls = the grids to load ; authors = null -> world ; [] -> no subscription
 // Returns every grid's scores sorted best first, each one carries its url.
 export function useCommunityScores(urls: string[], authors: string[] | null) {
   const [scores, setScores] = useState<CommunityScore[]>([]);
@@ -15,10 +15,10 @@ export function useCommunityScores(urls: string[], authors: string[] | null) {
     setScores([]);
     if (urls.length === 0 || (authors && authors.length === 0)) { setIsLoading(false); return; }
     setIsLoading(true);
-    const byKey = new Map<string, CommunityScore>(); // un score par (grille, pubkey), le plus récent
+    const byKey = new Map<string, CommunityScore>(); // one score per (grid, pubkey), the newest
     const removed = new Map<string, number>();       // (grille, pubkey) -> when they removed their score: older copies still served by a relay are dropped
     const publish = () => setScores([...byKey.values()].filter(s => s.timestamp > (removed.get(`${s.url}|${s.pubkey}`) ?? 0)).sort((a, b) => a.rank - b.rank));
-    // pas de signal de fin fiable des relais : 1,5 s max
+    // relays give no reliable end signal: 1.5 s at most
     const timer = setTimeout(() => setIsLoading(false), 1500);
     const close = subscribeScores(urls, authors, s => {
       const k = `${s.url}|${s.pubkey}`;

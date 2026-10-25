@@ -28,7 +28,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={nunito.className} suppressHydrationWarning>
 
-      {process.env.NODE_ENV !== "development" && 
+      {process.env.NODE_ENV !== "development" && process.env.NEXT_PUBLIC_ANALYTICS_SERVER_URL && 
       <Script 
           defer
           src={`${process.env.NEXT_PUBLIC_ANALYTICS_SERVER_URL}/script.js` }

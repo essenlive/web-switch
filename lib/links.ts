@@ -2,7 +2,7 @@ import { nip19 } from 'nostr-tools';
 
 export const keyLink = (nsec: string) => `${location.origin}/community#cle=${nsec}`;
 
-// Friend code `pseudo:npub…` -> { label, pubkey } | null
+// Friend code `nickname:npub…` -> { label, pubkey } | null
 export function parseFriendCode(code: string): { label: string; pubkey: string } | null {
   try {
     const i = code.lastIndexOf(':');

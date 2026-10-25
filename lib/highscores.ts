@@ -1,5 +1,7 @@
 import { matrixFromParams } from '@/lib/matrixHelpers';
 
+export const APP = 'switch';
+
 export type GameMode = 'daily' | 'time' | 'random' | 'custom';
 export const MODES: { id: GameMode; label: string }[] = [
   { id: 'daily', label: 'Daily' },
@@ -27,14 +29,7 @@ export function parseGrid(text: string): string | null {
   return r.validParams ? r.input.url : null;
 }
 
-export interface LocalHighscore { url: string; rank: number; mode: GameMode }
-
-// Personal bests kept by the game page under `localHighscores` ({ [gridUrl]: rank | null })
-export function loadLocalHighscores(): LocalHighscore[] {
-  try {
-    const all: Record<string, number | null> = JSON.parse(localStorage.getItem('localHighscores') || '{}');
-    return Object.entries(all)
-      .filter((e): e is [string, number] => !!e[0] && typeof e[1] === 'number')
-      .map(([url, rank]) => ({ url, rank, mode: modeOfUrl(url) }));
-  } catch { return []; }
-}
+// One sortable number, so local highscores, sorting and "is this a record" share a single rule.
+// Win: its moves (< 1000, same as before the time challenge). Loss: 1000 x smallest grid area reached + moves.
+export const rankOf = (won: boolean, moves: number, minArea: number) => won ? moves : 1000 * minArea + moves;
+export const formatRank = (rank: number) => rank < 1000 ? `${rank} moves` : `lost, down to ${Math.floor(rank / 1000)} tiles`;

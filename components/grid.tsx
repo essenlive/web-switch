@@ -1,7 +1,7 @@
 import { addPadding } from '@/lib/matrixHelpers';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from "motion/react";
-import { useMemo } from 'react';
+import { memo, useMemo } from 'react';
 import type { Direction } from '@/lib/switchMachine';
 import { Circle, Square, Triangle, Diamond } from 'lucide-react';
 
@@ -21,7 +21,7 @@ const EASE = [0.16, 1, 0.3, 1] as const; // exponential ease-out
 const DIR = { left: [-1, 0], right: [1, 0], up: [0, -1], down: [0, 1] } as const;
 type Slide = { x: number, y: number, delay: number }
 
-export function Grid({
+export const Grid = memo(function Grid({
     canva,
     canvaIndexes,
     cursor,
@@ -40,10 +40,10 @@ export function Grid({
             rows: ['bot', ...canvaIndexes.rows, 'top'],
             columns: ['left', ...canvaIndexes.columns, 'right']
         };
-    }, [canva, canvaIndexes]);
+    }, [canvaIndexes]);
 
     const isCursor = (x: number, y: number) => cursor.y === y && cursor.x === x
-    const padded = addPadding(canva, 0)
+    const padded = useMemo(() => addPadding(canva, 0), [canva])
     const cols = padded[0]?.length ?? 1
     // Tiles shrink to fit the column; 2.5rem max, 8px gaps, 4rem = page + tray padding
     const tile = `min(2.5rem, calc((min(100vw, 36rem) - 4rem) / ${cols} - 0.5rem))`
@@ -97,7 +97,7 @@ export function Grid({
                 </AnimatePresence>
         </div>
     )
-}
+})
 
 
 function Tile({ name, size, value, isCursor, slide, moveId, mountDelay }: {

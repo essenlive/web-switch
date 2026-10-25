@@ -1,9 +1,9 @@
-import { APP } from '@/lib/scoreEvent';
+import { STORAGE_KEYS } from '@/lib/profile';
 
 export interface Following { pubkey: string; label: string }
 export interface CommunitySettings { nickname: string | null; following: Following[] }
 
-const KEY = `${APP}-community`;
+const KEY = STORAGE_KEYS.community;
 export const NICKNAME_RE = /^[a-zA-Z0-9_-]{3,20}$/;
 
 export function loadSettings(): CommunitySettings {

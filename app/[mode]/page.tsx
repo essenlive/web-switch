@@ -11,12 +11,11 @@ import { useSearchParams, useParams, useRouter } from 'next/navigation'
 import { matrixFromParams, growMs } from "@/lib/matrixHelpers"
 import { useToast } from "@/hooks/use-toast";
 import { useControls } from '@/hooks/use-controls';
-import { useLocalStorage } from "@/hooks/use-local-storage";
+import { readBest, saveHighscore } from "@/lib/profile";
 import { getRandomString } from "@/lib/utils";
 import { InputList } from '@/components/inputList';
-import { useCommunity } from '@/hooks/useCommunity';
-import { publishScore } from '@/lib/nostr';
-import { rankOf } from '@/lib/scoreEvent';
+import { loadSettings } from '@/lib/communityStorage';
+import { rankOf } from '@/lib/highscores';
 import type { Direction } from '@/lib/switchMachine';
 
 export default function Page() {
@@ -46,17 +45,11 @@ export default function Page() {
   }, [validParams, toast, error, router]);
   
   const [snapshot, send] = useMachine(switchMachine, { input: input });
-  const { nickname } = useCommunity();
   
 
-  const [localHighscores, setLocalHighscores] = useLocalStorage<object>("localHighscores", { [snapshot.context.url]: null })
-  
-const [localHighscoresInputs, setLocalHighscoresInputs] = useLocalStorage<object>("localHighscoresInputs", { [snapshot.context.url]: null })
-  
-  const localHighscore = useMemo(() => {
-    if (!localHighscores[snapshot.context.url]) localHighscores[snapshot.context.url] = null;
-    return (localHighscores[snapshot.context.url])    
-  }, [localHighscores, searchParams, snapshot.value, snapshot.context.url])
+  const url = snapshot.context.url
+  const [localHighscore, setLocalHighscore] = useState<number | null>(null)
+  useEffect(() => { setLocalHighscore(readBest(url)) }, [url])
 
   // Time challenge clock: starts at the first move attempt, ms are sent with every move and tick
   const timer = snapshot.context.timerMode
@@ -83,19 +76,18 @@ const [localHighscoresInputs, setLocalHighscoresInputs] = useLocalStorage<object
     if (!ended) { saved.current = false; return }
     if (saved.current) return
     saved.current = true
-    const best = localHighscores[snapshot.context.url] ?? null
+    const best = readBest(url)
     setPrior(best)
     if (best === null || best > rank) {
-      // new objects, so the score bar re-renders with the new best
-      setLocalHighscores({ ...localHighscores, [snapshot.context.url]: rank })
-      // Timed games keep their timestamps too: the score cannot be re-published (nickname change) without them
       const { inputList: inputs, times, endAt } = snapshot.context
       const end = lost ? endAt : undefined
-      setLocalHighscoresInputs({ ...localHighscoresInputs, [snapshot.context.url]: timer ? { inputs, times, end } : inputs })
+      saveHighscore(url, rank, timer ? { inputs, times, end } : inputs)
+      setLocalHighscore(rank) // the score bar shows the new best
       // Only a new record is published (the event is replaceable: a worse score would overwrite the best)
-      if (nickname) publishScore(snapshot.context.url, { nickname, inputs, ...(timer ? { times, end } : {}) })
+      const { nickname } = loadSettings()
+      if (nickname) import('@/lib/nostr').then(n => n.publishScore(url, { nickname, inputs, ...(timer ? { times, end } : {}) }))
     }
-  }, [ended, rank, snapshot.context.url, localHighscores, setLocalHighscores, nickname])
+  }, [ended, rank, url, lost, timer, snapshot.context])
 
   // Growth does not wait for a move: tell the machine what time it is
   useEffect(() => {

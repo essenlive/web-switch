@@ -1,5 +1,4 @@
-import { APP } from '@/lib/scoreEvent';
-import { modeOfUrl, type GameMode } from '@/lib/highscores';
+import { APP, modeOfUrl, type GameMode } from '@/lib/highscores';
 import type { Direction } from '@/lib/switchMachine';
 
 // Everything a player keeps on this device. The game page writes the highscores, the community code the rest.
@@ -10,7 +9,7 @@ export const STORAGE_KEYS = {
   highscoreInputs: 'localHighscoresInputs',
 };
 
-type Stored = Direction[] | { inputs: Direction[]; times: number[]; end?: number } | null;
+export type Stored = Direction[] | { inputs: Direction[]; times: number[]; end?: number } | null;
 type Store = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
 
 export interface Highscore {
@@ -19,6 +18,7 @@ export interface Highscore {
   mode: GameMode;
   inputs: Direction[] | null; // null if the moves were never stored (older records): no replay possible
   times?: number[];
+  end?: number;
 }
 
 const read = <T,>(key: string, store: Store): Record<string, T> => {
@@ -33,8 +33,18 @@ export function loadHighscores(store: Store = localStorage): Highscore[] {
     .map(([url, rank]) => {
       const m = moves[url];
       const inputs = Array.isArray(m) ? m : m?.inputs ?? null;
-      return { url, rank, mode: modeOfUrl(url), inputs, times: Array.isArray(m) ? undefined : m?.times };
+      return { url, rank, mode: modeOfUrl(url), inputs, times: Array.isArray(m) ? undefined : m?.times, end: Array.isArray(m) ? undefined : m?.end };
     });
+}
+
+export const readBest = (url: string, store: Store = localStorage): number | null =>
+  read<number | null>(STORAGE_KEYS.highscores, store)[url] ?? null;
+
+// A new personal best: the rank and the moves (with timestamps for timed games, which cannot be re-published without them)
+export function saveHighscore(url: string, rank: number, stored: Stored, store: Store = localStorage) {
+  for (const [key, value] of [[STORAGE_KEYS.highscores, rank], [STORAGE_KEYS.highscoreInputs, stored]] as const) {
+    store.setItem(key, JSON.stringify({ ...read(key, store), [url]: value }));
+  }
 }
 
 export function removeHighscore(url: string, store: Store = localStorage) {
