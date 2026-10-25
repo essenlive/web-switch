@@ -1,6 +1,5 @@
 import { nip19 } from 'nostr-tools';
 
-export const friendLink = (code: string) => `${location.origin}/community?ami=${encodeURIComponent(code)}`;
 export const keyLink = (nsec: string) => `${location.origin}/community#cle=${nsec}`;
 
 // Friend code `pseudo:npub…` -> { label, pubkey } | null

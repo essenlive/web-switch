@@ -1,23 +1,21 @@
 'use client'
 
 import { useEffect, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
 import QRCode from 'qrcode';
 import Link from 'next/link';
-import { Copy, KeyRound, Trash2, TriangleAlert, UserPlus, UserRound } from 'lucide-react';
+import { Copy, KeyRound, Trash2, TriangleAlert, UserRound } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useCommunity } from '@/hooks/useCommunity';
 import { exportKey, importKey } from '@/lib/nostr';
-import { friendLink, keyLink } from '@/lib/links';
+import { keyLink } from '@/lib/links';
 
 type Section = 'nickname' | 'friends' | 'backup' | 'danger';
 const tray = 'flex flex-col gap-3 p-4 bg-background rounded-lg';
 
 export default function Community() {
-  const { nickname, following, myPubkey, friendCode, highscores, addFollowing, removeFollowing, saveNickname, deleteProfile } = useCommunity();
-  const searchParams = useSearchParams();
+  const { nickname, following, highscores, addFollowing, removeFollowing, saveNickname, deleteProfile } = useCommunity();
   const [draft, setDraft] = useState('');
   useEffect(() => setDraft(nickname ?? ''), [nickname]); // the form starts on the current nickname
   const [friendInput, setFriendInput] = useState('');
@@ -48,15 +46,6 @@ export default function Community() {
     history.replaceState(null, '', location.pathname);
     setPendingImport(m[1]);
   }, []);
-
-  // Friend link (?ami=…): wait for myPubkey, otherwise the self-add check is wrong
-  const ami = searchParams.get('ami');
-  useEffect(() => {
-    if (!ami || !myPubkey) return;
-    history.replaceState(null, '', location.pathname);
-    const err = addFollowing(ami);
-    say('friends', err ?? 'Friend added', !!err);
-  }, [ami, myPubkey, addFollowing]);
 
   const showKey = async () => {
     const k = exportKey();
@@ -108,17 +97,6 @@ export default function Community() {
         <p id={nicknameHint} className="text-sm text-muted-foreground">3 to 20 characters: letters, numbers, _ or -</p>
         {renderNote('nickname')}
       </form>
-
-      {nickname && friendCode && (
-        <section className={tray}>
-          <h2 className="text-xl font-bold flex items-center gap-2"><UserPlus aria-hidden /> Your friend code</h2>
-          <p>Send this to a friend so they can follow your scores.</p>
-          <code className="break-all rounded-md bg-muted p-2 text-sm">{friendCode}</code>
-          <Button className="h-11" onClick={() => copy(friendLink(friendCode), 'nickname', 'Friend link copied')}>
-            <Copy /> Copy my friend link
-          </Button>
-        </section>
-      )}
 
       <section className={tray}>
         <h2 className="text-xl font-bold">Your scores</h2>

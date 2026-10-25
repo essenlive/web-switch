@@ -37,9 +37,9 @@ export default function LeaderboardPage() {
   return (
     <div className="flex flex-col gap-2">
       <h1 className="sr-only">Leaderboard</h1>
-      <div role="group" aria-label="Page section" className="flex gap-2 p-4 bg-background rounded-lg">
-        <Button className="h-11 grow" variant={tab === 'board' ? 'default' : 'outline'} aria-pressed={tab === 'board'} onClick={() => setTab('board')}>Leaderboard</Button>
-        <Button className="h-11 grow" variant={tab === 'scores' ? 'default' : 'outline'} aria-pressed={tab === 'scores'} onClick={() => setTab('scores')}>My scores</Button>
+      <div role="group" aria-label="Page section" className="flex gap-2">
+        <Button className="h-11 grow text-base rounded-lg" variant={tab === 'board' ? 'default' : 'outline'} aria-pressed={tab === 'board'} onClick={() => setTab('board')}>Leaderboard</Button>
+        <Button className="h-11 grow text-base rounded-lg" variant={tab === 'scores' ? 'default' : 'outline'} aria-pressed={tab === 'scores'} onClick={() => setTab('scores')}>My scores</Button>
       </div>
 
       {tab === 'board' && (

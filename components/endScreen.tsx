@@ -1,34 +1,16 @@
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { Switch } from "@/components/ui/switch"
-import { Label } from "@/components/ui/label"
-import { Share2, TextQuote, CircleArrowRight } from "lucide-react"
+import { Share2, CircleArrowRight } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { motion, AnimatePresence} from "motion/react"
 import { getMatrixString } from "@/lib/matrixHelpers"
-import { type Direction } from "@/lib/switchMachine";
-import { useState } from "react"
 import { Leaderboard } from "@/components/leaderboard"
-import { useCommunity } from "@/hooks/useCommunity"
-import { friendLink } from "@/lib/links"
 
-function getInputListIcons(inputList: Direction[]):string{
-    const DIRECTION_ARROWS = new Map(Object.entries({
-        'up': "⬆️",
-        'right': "➡️",
-        'down': "⬇️",
-        'left': '⬅️',
-    }))
-    return inputList.map(input=>DIRECTION_ARROWS.get(input)).join(' ')
-
-}
 export function EndScreen({
     className,
     visible,
     score,
-    inputsList,
     highscore: bestRank,
-    highscoreInputs,
     url,
     restart,
     initialCanva,
@@ -39,9 +21,7 @@ export function EndScreen({
     // The stored best is a rank: >= 1000 is a lost game, so there is no winning score to compare with
     const highscore = bestRank !== null && bestRank < 1000 ? bestRank : null
     const { toast } = useToast()
-    const { friendCode } = useCommunity()
-    const [withFriendLink, setWithFriendLink] = useState(false)
-    const copyToClipboard = (options? : undefined | 'withCanva' | 'withInputs') => {
+    const copyToClipboard = (options? : undefined | 'withCanva') => {
         let clipboardContent: string = ''
         if(lost){
             clipboardContent = `🌱 This switch time challenge outgrew me after ${score} moves, down to ${area} tiles.\nTry yourself !\nhttps://switch.essenlive.xyz/g${url}`
@@ -50,14 +30,9 @@ export function EndScreen({
             clipboardContent = `🎊 I solved this switch grid in ${highscore !== null && highscore < score ? highscore : score} moves. \n${getMatrixString(initialCanva)}\nTry yourself !\nhttps://switch.essenlive.xyz/g${url}`
 
         }
-        else if(options === 'withInputs'){
-            clipboardContent = `🎊 I solved this switch grid in ${highscore !== null && highscore < score ? highscore : score} moves. \nHere is my solution : ${highscore !== null && highscore < score ? getInputListIcons(highscoreInputs) : getInputListIcons(inputsList)}\nTry yourself !\nhttps://switch.essenlive.xyz/g${url}`
-
-        }
         else{
             clipboardContent = `🎊 I solved this switch grid in ${highscore !== null && highscore < score ? highscore : score} moves.\nTry yourself !\nhttps://switch.essenlive.xyz/g${url}`
         }
-        if (withFriendLink && friendCode) clipboardContent += `\nAdd me : ${friendLink(friendCode)}`
         navigator.clipboard.writeText(clipboardContent)
 
         toast({
@@ -98,16 +73,7 @@ export function EndScreen({
                     <Button className="text-base grow" onClick={() => copyToClipboard()}>
                         <Share2 /> Share {best === score ? "result" : "best"}
                     </Button>
-                    <Button variant="secondary" aria-label="Share with my moves" title="Share with my moves" onClick={() => copyToClipboard("withInputs")}>
-                        <TextQuote />
-                    </Button>
                 </div>
-                {friendCode && (
-                    <div className="flex items-center justify-between gap-3 rounded-md bg-muted p-3">
-                        <Label htmlFor="friend-link" className="grow cursor-pointer text-base">Add my friend link when sharing</Label>
-                        <Switch id="friend-link" checked={withFriendLink} onCheckedChange={setWithFriendLink} />
-                    </div>
-                )}
             </div>
 
             <Leaderboard url={url} />

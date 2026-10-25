@@ -177,6 +177,7 @@ const switchMachine = setup({
         // Steps are applied one at a time (evaluated in between) so a live game and its replay take the same path.
         grow_canva: assign(({ context }, params: { at: number }) => {
             const clonedContext = structuredClone(context);
+            const interval = growMs(context.canva); // size before this step
             clonedContext.endAt = params.at;
             const { canva, canvaIndexes, cursor } = clonedContext;
             const line = growLine(clonedContext.seed, clonedContext.grown, clonedContext.grown % 2 === 0 ? canva[0].length : canva.length);
@@ -190,7 +191,7 @@ const switchMachine = setup({
                 if (cursor.x === canva[0].length) cursor.x++; // cursor was on the right border
             }
             clonedContext.grown++;
-            clonedContext.clockBase += growMs(clonedContext.initialCanva); // next step is due one interval later
+            clonedContext.clockBase += interval; // next step is due one interval later (of the new grid)
             return clonedContext;
         }),
         track_area: assign({
@@ -252,7 +253,7 @@ const switchMachine = setup({
         },
         // Time challenge: a full interval has passed since the countdown started
         is_growth_due: ({ context }, params: { at?: number }) =>
-            context.timerMode && params.at !== undefined && params.at - context.clockBase >= growMs(context.initialCanva),
+            context.timerMode && params.at !== undefined && params.at - context.clockBase >= growMs(context.canva),
         is_overgrown: ({ context }) => context.canva.length > MAX_SIDE || context.canva[0].length > MAX_SIDE,
         is_full_line: ({ context }) => {
             const { rows, columns } = checkValues(context.canva);

@@ -2,14 +2,10 @@ import { cn } from '@/lib/utils';
 import { useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from "motion/react";
 import { type Direction } from "@/lib/switchMachine";
+import { ArrowUp, ArrowRight, ArrowDown, ArrowLeft } from "lucide-react";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
 
-const DIRECTION_ARROWS = new Map(Object.entries({
-    'up': "⬆️",
-    'right': "➡️",
-    'down': "⬇️",
-    'left': '⬅️',
-}))
+const DIRECTION_ARROWS = { up: ArrowUp, right: ArrowRight, down: ArrowDown, left: ArrowLeft }
 
 const transition = {
     duration: 0.2,
@@ -44,7 +40,9 @@ export function InputList({
             <ScrollArea className="w-full whitespace-nowrap rounded-md ">
                 <div className={cn("flex space-x-2 items-center min-h-6 my-4 ", className)}>
                     <AnimatePresence>
-                        {inputList.map((input, i) => (
+                        {inputList.map((input, i) => {
+                            const Arrow = DIRECTION_ARROWS[input]
+                            return (
 
                             <motion.div
                                 ref={i === inputIndex ? scrollToRef : null}
@@ -58,9 +56,10 @@ export function InputList({
                                     "aspect-square w-6 h-6 rounded-sm flex justify-center items-center align-middle text-center"
                                 )}
                             >
-                                {DIRECTION_ARROWS.get(input)}
+                                <Arrow size={16} aria-label={input} />
                             </motion.div>
-                        ))}
+                            )
+                        })}
                     </AnimatePresence>
                 </div>
             <ScrollBar orientation="horizontal" />

@@ -4,7 +4,7 @@ import { finalizeEvent, generateSecretKey } from 'nostr-tools/pure';
 import switchMachine, { type Direction } from '@/lib/switchMachine';
 import { matrixFromParams, generateRandomMatrix, growLine, growMs } from '@/lib/matrixHelpers';
 import { scoreFromEvent, dTag, rankOf, SCORE_KIND } from '@/lib/scoreEvent';
-import { friendLink, parseFriendCode } from '@/lib/links';
+import { parseFriendCode } from '@/lib/links';
 import { nip19 } from 'nostr-tools';
 import { getPublicKey } from 'nostr-tools/pure';
 
@@ -55,9 +55,7 @@ it('snapshot de la grille de seed connue (si ça casse, les défis partagés ont
 it('code ami : aller-retour', () => {
   const pubkey = getPublicKey(sk);
   const code = `bob:${nip19.npubEncode(pubkey)}`;
-  globalThis.location = { origin: 'http://x' } as Location;
-  const ami = new URL(friendLink(code)).searchParams.get('ami')!;
-  expect(parseFriendCode(ami)).toEqual({ label: 'bob', pubkey });
+  expect(parseFriendCode(code)).toEqual({ label: 'bob', pubkey });
 });
 
 describe('time challenge', () => {
@@ -80,7 +78,7 @@ describe('time challenge', () => {
   const mv = (a: ReturnType<typeof newActor>, i: number, at: number) =>
     a.send({ type: 'input_move', params: { direction: i % 2 ? 'left' : 'right', at } });
 
-  it('the grid grows with the clock, one step per GROW_MS, even without a move', () => {
+  it('the grid grows with the clock, one step per interval (1000 ms x smallest side), even without a move', () => {
     const a = newActor();
     mv(a, 0, 0);
     a.send({ type: 'tick', params: { at: GROW_MS - 1 } });
@@ -98,16 +96,17 @@ describe('time challenge', () => {
     a.send({ type: 'input_move', params: { direction: 'right', at: 2000 } });
     expect(a.getSnapshot().context.canva.length).toBe(2);
     expect(a.getSnapshot().context.clockBase).toBe(2000);
-    a.send({ type: 'tick', params: { at: 2000 + GROW_MS - 1 } });
+    // the interval follows the current grid: 2 rows left, so 2000 ms
+    a.send({ type: 'tick', params: { at: 2000 + 2000 - 1 } });
     expect(a.getSnapshot().context.grown).toBe(0);
-    a.send({ type: 'tick', params: { at: 2000 + GROW_MS } });
+    a.send({ type: 'tick', params: { at: 2000 + 2000 } });
     expect(a.getSnapshot().context.grown).toBe(1);
   });
 
   it('a late move first catches up on the growth, then is played', () => {
     const a = newActor();
-    mv(a, 0, 3 * GROW_MS);
-    expect(a.getSnapshot().context.grown).toBe(3);
+    mv(a, 0, 10 * GROW_MS);
+    expect(a.getSnapshot().context.grown).toBeGreaterThan(3); // intervals grow with the grid: 3000, 3000, 4000, 4000...
     expect(a.getSnapshot().context.score).toBe(1);
   });
 
@@ -116,7 +115,7 @@ describe('time challenge', () => {
   function lostGame() {
     const a = newActor();
     let at = 0, i = 0;
-    for (; at < 40 * GROW_MS && a.getSnapshot().value !== 'Game_Over'; at += 250) {
+    for (; at < 400 * GROW_MS && a.getSnapshot().value !== 'Game_Over'; at += 250) {
       if (at % 1000 === 0) mv(a, i++, at);
       a.send({ type: 'tick', params: { at } });
     }

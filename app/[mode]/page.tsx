@@ -53,11 +53,6 @@ export default function Page() {
   
 const [localHighscoresInputs, setLocalHighscoresInputs] = useLocalStorage<object>("localHighscoresInputs", { [snapshot.context.url]: null })
   
-  const localHighscoreInputs = useMemo(() => {
-    if (!localHighscoresInputs[snapshot.context.url]) localHighscoresInputs[snapshot.context.url] = null;
-    return (localHighscoresInputs[snapshot.context.url])    
-  }, [localHighscoresInputs, searchParams, snapshot.value, snapshot.context.url])
-
   const localHighscore = useMemo(() => {
     if (!localHighscores[snapshot.context.url]) localHighscores[snapshot.context.url] = null;
     return (localHighscores[snapshot.context.url])    
@@ -81,17 +76,23 @@ const [localHighscoresInputs, setLocalHighscoresInputs] = useLocalStorage<object
   const ended = snapshot.value === "Game_End" || lost
   const rank = rankOf(!lost, snapshot.context.score, snapshot.context.minArea)
 
+  // `prior` is the best before this game, for the end screen; `saved` keeps the effect to one run per game
+  const [prior, setPrior] = useState<number | null>(null)
+  const saved = useRef(false)
   useEffect(() => {
-    if (!ended) return
-    if (localHighscores[snapshot.context.url] === null || localHighscores[snapshot.context.url] > rank) {
-      localHighscores[snapshot.context.url] = rank;
-      setLocalHighscores(localHighscores)
+    if (!ended) { saved.current = false; return }
+    if (saved.current) return
+    saved.current = true
+    const best = localHighscores[snapshot.context.url] ?? null
+    setPrior(best)
+    if (best === null || best > rank) {
+      // new objects, so the score bar re-renders with the new best
+      setLocalHighscores({ ...localHighscores, [snapshot.context.url]: rank })
       // Timed games keep their timestamps too: the score cannot be re-published (nickname change) without them
       const { inputList: inputs, times, endAt } = snapshot.context
       const end = lost ? endAt : undefined
-      localHighscoresInputs[snapshot.context.url] = timer ? { inputs, times, end } : inputs;
-      setLocalHighscoresInputs(localHighscoresInputs)
-      // Seul un nouveau record est publié (l'événement est remplaçable : un pire score écraserait le meilleur)
+      setLocalHighscoresInputs({ ...localHighscoresInputs, [snapshot.context.url]: timer ? { inputs, times, end } : inputs })
+      // Only a new record is published (the event is replaceable: a worse score would overwrite the best)
       if (nickname) publishScore(snapshot.context.url, { nickname, inputs, ...(timer ? { times, end } : {}) })
     }
   }, [ended, rank, snapshot.context.url, localHighscores, setLocalHighscores, nickname])
@@ -162,9 +163,7 @@ const [localHighscoresInputs, setLocalHighscoresInputs] = useLocalStorage<object
           url={snapshot.context.url}
           restart={restart}
           score={snapshot.context.score}
-          inputsList={snapshot.context.inputList}
-          highscoreInputs={Array.isArray(localHighscoreInputs) ? localHighscoreInputs : localHighscoreInputs?.inputs ?? null}
-          highscore={localHighscore}
+          highscore={prior}
           initialCanva={snapshot.context.initialCanva}
         />
         <Score
@@ -173,7 +172,7 @@ const [localHighscoresInputs, setLocalHighscoresInputs] = useLocalStorage<object
           restart={restart}
           score={snapshot.context.score}
           highscore={highscoreLabel}
-          growIn={timer ? Math.ceil(Math.max(0, growMs(snapshot.context.initialCanva) - (elapsed - snapshot.context.clockBase)) / 1000) : null}
+          growIn={timer ? Math.ceil(Math.max(0, growMs(snapshot.context.canva) - (elapsed - snapshot.context.clockBase)) / 1000) : null}
         />
       </div>
       <div className="bg-background rounded-lg px-4">
