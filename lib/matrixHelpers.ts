@@ -179,9 +179,9 @@ export function generateRandomMatrix(str: string, rows: number, cols: number): n
 }
 
 // Time challenge: every growMs(current grid) of play (clock starts at the first move) the grid gains a row, then a column, alternating.
-// The interval is 1000 ms per tile of the smallest side of the starting grid (12x9 -> 9000 ms).
+// The interval is 2000 ms per tile of the smallest side of the current grid (12x9 -> 18000 ms).
 // Lose when a side exceeds MAX_SIDE. Changing these invalidates every shared time-challenge score.
-export const growMs = (canva: number[][]): number => 1000 * Math.min(canva.length, canva[0].length);
+export const growMs = (canva: number[][]): number => 2000 * Math.min(canva.length, canva[0].length);
 export const MAX_SIDE = 12;
 
 // New line appended at the top (row) or right (column), derived from seed + growth index only,

@@ -78,7 +78,7 @@ describe('time challenge', () => {
   const mv = (a: ReturnType<typeof newActor>, i: number, at: number) =>
     a.send({ type: 'input_move', params: { direction: i % 2 ? 'left' : 'right', at } });
 
-  it('the grid grows with the clock, one step per interval (1000 ms x smallest side), even without a move', () => {
+  it('the grid grows with the clock, one step per interval (2000 ms x smallest side), even without a move', () => {
     const a = newActor();
     mv(a, 0, 0);
     a.send({ type: 'tick', params: { at: GROW_MS - 1 } });
@@ -96,17 +96,17 @@ describe('time challenge', () => {
     a.send({ type: 'input_move', params: { direction: 'right', at: 2000 } });
     expect(a.getSnapshot().context.canva.length).toBe(2);
     expect(a.getSnapshot().context.clockBase).toBe(2000);
-    // the interval follows the current grid: 2 rows left, so 2000 ms
-    a.send({ type: 'tick', params: { at: 2000 + 2000 - 1 } });
+    // the interval follows the current grid: 2 rows left, so 4000 ms
+    a.send({ type: 'tick', params: { at: 2000 + 4000 - 1 } });
     expect(a.getSnapshot().context.grown).toBe(0);
-    a.send({ type: 'tick', params: { at: 2000 + 2000 } });
+    a.send({ type: 'tick', params: { at: 2000 + 4000 } });
     expect(a.getSnapshot().context.grown).toBe(1);
   });
 
   it('a late move first catches up on the growth, then is played', () => {
     const a = newActor();
     mv(a, 0, 10 * GROW_MS);
-    expect(a.getSnapshot().context.grown).toBeGreaterThan(3); // intervals grow with the grid: 3000, 3000, 4000, 4000...
+    expect(a.getSnapshot().context.grown).toBeGreaterThan(3); // intervals grow with the grid: 6000, 6000, 8000, 8000...
     expect(a.getSnapshot().context.score).toBe(1);
   });
 
