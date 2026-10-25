@@ -65,6 +65,21 @@ export function replay(url: string, inputs: Direction[], times?: number[], end?:
   }
 }
 
+// A removed score is the same replaceable event with an empty payload: relays keep only the newest, so it overwrites the score.
+export const TOMBSTONE = { v: 1, deleted: true } as const;
+
+// When (ms) a verified event says its author removed the score of this grid, else null.
+export function removalFromEvent(event: Event, url: string): number | null {
+  try {
+    if (event.kind !== SCORE_KIND || !verifyEvent(event)) return null;
+    if (!event.tags.some(t => t[0] === 'd' && t[1] === dTag(url))) return null;
+    const p = JSON.parse(event.content);
+    return p?.v === 1 && p.deleted === true ? event.created_at * 1000 : null;
+  } catch {
+    return null;
+  }
+}
+
 export function scoreFromEvent(event: Event, url: string): CommunityScore | null {
   try {
     if (event.kind !== SCORE_KIND || !verifyEvent(event)) return null;

@@ -3,19 +3,24 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import QRCode from 'qrcode';
-import { Copy, KeyRound, TriangleAlert, UserPlus, UserRound } from 'lucide-react';
+import Link from 'next/link';
+import { Clapperboard, Copy, KeyRound, Trash2, TriangleAlert, UserPlus, UserRound } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useCommunity } from '@/hooks/useCommunity';
 import { exportKey, importKey } from '@/lib/nostr';
 import { friendLink, keyLink } from '@/lib/links';
+import { MODES, modeOfUrl } from '@/lib/highscores';
+import { formatRank } from '@/lib/scoreEvent';
+import { replayLink } from '@/lib/replay';
 
-type Section = 'nickname' | 'friends' | 'backup';
+type Section = 'nickname' | 'friends' | 'backup' | 'scores' | 'danger';
+const playPath = (url: string) => `${modeOfUrl(url) === 'random' ? '/r' : '/g'}${url}`;
 const tray = 'flex flex-col gap-3 p-4 bg-background rounded-lg';
 
 export default function Community() {
-  const { nickname, following, myPubkey, friendCode, addFollowing, removeFollowing, saveNickname } = useCommunity();
+  const { nickname, following, myPubkey, friendCode, highscores, addFollowing, removeFollowing, saveNickname, removeHighscore, deleteProfile } = useCommunity();
   const searchParams = useSearchParams();
   const [draft, setDraft] = useState('');
   const [friendInput, setFriendInput] = useState('');
@@ -23,6 +28,8 @@ export default function Community() {
   const [nsec, setNsec] = useState<string | null>(null);
   const [qr, setQr] = useState('');
   const [restore, setRestore] = useState('');
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [pendingImport, setPendingImport] = useState<string | null>(null); // key waiting for an explicit "Replace"
 
   const say = (section: Section, text: string, error = false) => setNote({ section, text, error });
@@ -72,7 +79,7 @@ export default function Community() {
 
   return (
     <div className="flex flex-col gap-2">
-      <h1 className="sr-only">Community</h1>
+      <h1 className="sr-only">Profile and community</h1>
 
       {pendingImport && (
         <section className={tray} role="alertdialog" aria-labelledby="replace-title">
@@ -116,6 +123,35 @@ export default function Community() {
           </Button>
         </section>
       )}
+
+      <section className={tray}>
+        <h2 className="text-xl font-bold">Your highscores</h2>
+        {highscores.length === 0 ? <p>Solve a grid and your best shows up here, per mode.</p> : MODES.map(m => {
+          const rows = highscores.filter(b => b.mode === m.id).sort((a, b) => a.url < b.url ? 1 : -1);
+          if (!rows.length) return null;
+          return (
+            <div key={m.id} className="flex flex-col gap-1">
+              <h3 className="font-bold text-muted-foreground">{m.label}</h3>
+              <ul className="flex flex-col gap-1">
+                {rows.map(b => (
+                  <li key={b.url} className="flex items-center justify-between gap-2">
+                    <span className="min-w-0 truncate">{formatRank(b.rank)} <span className="text-sm text-muted-foreground">{b.url.replace('?', '')}</span></span>
+                    <span className="flex items-center gap-3 shrink-0">
+                      <Link href={playPath(b.url)} className="underline">Play</Link>
+                      <Link href={`/leaderboard?u=${encodeURIComponent(b.url)}`} className="underline">Ranking</Link>
+                      {b.inputs && <Link href={replayLink({ query: b.url, moves: b.inputs, times: b.times })} aria-label="Watch the replay" title="Watch the replay"><Clapperboard size={18} /></Link>}
+                      <button type="button" aria-label={`Remove my score on ${b.url.replace('?', '')}`} title="Remove from this device and the community" className="cursor-pointer rounded-sm p-1 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => { removeHighscore(b.url); say('scores', 'Score removed'); }}>
+                        <Trash2 size={18} />
+                      </button>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          );
+        })}
+        {renderNote('scores')}
+      </section>
 
       {(nickname || following.length > 0) && (
         <form
@@ -162,6 +198,25 @@ export default function Community() {
             </>
           ) : <Button className="h-11" onClick={showKey}>Show my secret key</Button>}
           {renderNote('backup')}
+        </section>
+      )}
+
+      {(nickname || highscores.length > 0) && (
+        <section className={tray}>
+          <h2 className="text-xl font-bold flex items-center gap-2"><Trash2 aria-hidden /> Delete my profile</h2>
+          <p>Removes your nickname, friends and highscores from this device, and every score you published to the community. You get a new identity. This cannot be undone, back up your key first if you may want it back.</p>
+          {confirmDelete ? (
+            <div className="flex gap-2">
+              <Button variant="outline" className="h-11 grow" disabled={deleting} onClick={() => setConfirmDelete(false)}>Cancel</Button>
+              <Button variant="destructive" className="h-11 grow" disabled={deleting} onClick={async () => {
+                setDeleting(true);
+                await deleteProfile();
+                setDeleting(false); setConfirmDelete(false); hideKey();
+                say('nickname', 'Profile deleted. You have a fresh identity.');
+              }}>{deleting ? 'Deleting…' : 'Yes, delete everything'}</Button>
+            </div>
+          ) : <Button variant="destructive" className="h-11" onClick={() => setConfirmDelete(true)}>Delete my profile</Button>}
+          {renderNote('danger')}
         </section>
       )}
 

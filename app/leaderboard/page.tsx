@@ -8,8 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { getDailyString } from '@/lib/utils';
-import { MODES, loadLocalHighscores, modeOfUrl, parseGrid, type LocalHighscore } from '@/lib/highscores';
-import { formatRank } from '@/lib/scoreEvent';
+import { modeOfUrl, parseGrid } from '@/lib/highscores';
 
 const CS = '6x8';
 const toDay = (d: string) => `${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6)}`; // YYYYMMDD -> YYYY-MM-DD
@@ -26,8 +25,7 @@ export default function LeaderboardPage() {
   const [view, setView] = useState<View>(shared ? 'grid' : 'daily');
   const [day, setDay] = useState(''); // filled after mount: the local date differs between server and client
   const [gridText, setGridText] = useState(shared ?? '');
-  const [bests, setBests] = useState<LocalHighscore[]>([]);
-  useEffect(() => { setDay(toDay(getDailyString())); setBests(loadLocalHighscores()); }, []);
+  useEffect(() => { setDay(toDay(getDailyString())); }, []);
 
   const seed = day.replaceAll('-', '');
   const gridUrl = parseGrid(gridText);
@@ -59,29 +57,7 @@ export default function LeaderboardPage() {
 
       {url && <Leaderboard url={url} />}
 
-      <div className="flex flex-col gap-3 p-4 bg-background rounded-lg">
-        <h2 className="text-xl font-bold">Your highscores</h2>
-        {bests.length === 0 ? <p>Solve a grid and your best shows up here, per mode.</p> : MODES.map(m => {
-          const rows = bests.filter(b => b.mode === m.id).sort((a, b) => a.url < b.url ? 1 : -1);
-          if (!rows.length) return null;
-          return (
-            <section key={m.id} className="flex flex-col gap-1">
-              <h3 className="font-bold text-muted-foreground">{m.label}</h3>
-              <ul className="flex flex-col gap-1">
-                {rows.map(b => (
-                  <li key={b.url} className="flex items-center justify-between gap-2">
-                    <span className="min-w-0 truncate">{formatRank(b.rank)} <span className="text-sm text-muted-foreground">{b.url.replace('?', '')}</span></span>
-                    <span className="flex gap-3 shrink-0">
-                      <Link href={playPath(b.url)} className="underline">Play</Link>
-                      <Link href={`/leaderboard?u=${encodeURIComponent(b.url)}`} className="underline">Ranking</Link>
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          );
-        })}
-      </div>
+      <p className="px-1"><Link href="/community" className="underline font-bold">Your highscores</Link> are on your profile, where you can replay or remove them.</p>
     </div>
   );
 }

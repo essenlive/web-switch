@@ -41,7 +41,7 @@ export function Header({
                 </Link>
                 <nav aria-label="Main" className="contents">
                     {navLink("/leaderboard", "Leaderboard", Medal)}
-                    {navLink("/community", "Community", Users)}
+                    {navLink("/community", "Profile and community", Users)}
                 </nav>
                 <motion.button
                     type="button"

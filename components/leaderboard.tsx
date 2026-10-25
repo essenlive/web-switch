@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Clapperboard } from 'lucide-react';
+import { Clapperboard, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useCommunity } from '@/hooks/useCommunity';
 import { useCommunityScores } from '@/hooks/useCommunityScores';
@@ -10,8 +10,9 @@ import { formatRank } from '@/lib/scoreEvent';
 import { replayLink } from '@/lib/replay';
 
 export function Leaderboard({ url }: { url: string }) {
-  const { nickname, following, myPubkey } = useCommunity();
+  const { nickname, following, myPubkey, removeHighscore } = useCommunity();
   const [world, setWorld] = useState(false);
+  const [removedUrl, setRemovedUrl] = useState<string | null>(null); // the relays do not echo our own removal back
   const authors = world ? null : [...(nickname && myPubkey ? [myPubkey] : []), ...following.map(f => f.pubkey)];
   const { scores, isLoading } = useCommunityScores(url, authors);
 
@@ -26,12 +27,17 @@ export function Leaderboard({ url }: { url: string }) {
       )}
       {isLoading ? <p>Loading…</p> : scores.length === 0 ? <p>No scores for this grid yet.</p> : (
         <ol className="list-decimal list-inside space-y-1">
-          {scores.slice(0, 20).map(s => (
+          {scores.filter(s => !(removedUrl === url && s.pubkey === myPubkey)).slice(0, 20).map(s => (
             <li key={s.pubkey} className={s.pubkey === myPubkey ? 'font-bold' : ''}>
               {following.find(f => f.pubkey === s.pubkey)?.label ?? s.nickname} — {formatRank(s.rank)}
               <Link href={replayLink({ query: url, moves: s.inputs, times: s.times })} aria-label={`Watch ${s.nickname}'s replay`} title="Watch the replay" className="ml-2 inline-flex align-middle rounded-sm p-1 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                 <Clapperboard size={16} />
               </Link>
+              {s.pubkey === myPubkey && (
+                <button type="button" aria-label="Remove my score" title="Remove my score" onClick={() => { removeHighscore(url); setRemovedUrl(url); }} className="ml-1 inline-flex cursor-pointer align-middle rounded-sm p-1 text-muted-foreground hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                  <Trash2 size={16} />
+                </button>
+              )}
             </li>
           ))}
         </ol>
