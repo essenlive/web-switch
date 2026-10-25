@@ -5,17 +5,18 @@ import { useMemo } from 'react';
 import type { Direction } from '@/lib/switchMachine';
 import { Circle, Square, Triangle, Diamond } from 'lucide-react';
 
+// Colors come from the active theme's tile tokens (globals.css)
 const BLOCK_COLORS = [
-    'bg-gray-100 dark:bg-gray-900',
-    'bg-red-500 dark:bg-red-600',
-    'bg-blue-500 dark:bg-blue-600',
-    'bg-green-500 dark:bg-green-600',
-    'bg-yellow-500 dark:bg-yellow-600',
+    'bg-tile-0',
+    'bg-tile-1',
+    'bg-tile-2',
+    'bg-tile-3',
+    'bg-tile-4',
 ];
 // One shape per color so tiles never rely on hue alone. Index = tile value.
 const BLOCK_SHAPES = [null, Circle, Square, Triangle, Diamond];
-const BLOCK_NAMES = ['empty', 'red circle', 'blue square', 'green triangle', 'yellow diamond'];
-const BLOCK_INK = ['', 'text-white', 'text-white', 'text-white', 'text-gray-900'];
+const BLOCK_NAMES = ['empty', 'circle', 'square', 'triangle', 'diamond'];
+const BLOCK_INK = ['', 'text-tile-ink-1', 'text-tile-ink-2', 'text-tile-ink-3', 'text-tile-ink-4'];
 const EASE = [0.16, 1, 0.3, 1] as const; // exponential ease-out
 const DIR = { left: [-1, 0], right: [1, 0], up: [0, -1], down: [0, 1] } as const;
 type Slide = { x: number, y: number, delay: number }
