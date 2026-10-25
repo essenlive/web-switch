@@ -1,4 +1,4 @@
-import { setup, assign } from "xstate";
+import { setup, assign, raise } from "xstate";
 import { 
     checkValues,
     removeColumn, 
@@ -6,13 +6,17 @@ import {
     addToColumnEnd, 
     addToColumnStart, 
     addToRowEnd, 
-    addToRowStart
+    addToRowStart,
+    growLine,
+    GROW_MS,
+    MAX_SIDE
 } from "@/lib/matrixHelpers"
 
 export type Direction = "up" | "left" | "down" | "right";
 type Input = {
     canva: number[][],
     timerMode: boolean,
+    seed: string,
     url: string
 }
 
@@ -33,7 +37,13 @@ const switchMachine = setup({
             };
             initialCanva: number[][];
             url : string;
-
+            // Time challenge only
+            timerMode: boolean;
+            seed: string;
+            grown: number;   // growth steps applied so far
+            minArea: number; // smallest grid area reached, ranks a lost game
+            times: number[]; // ms since the first move, one per accepted move
+            endAt: number;   // ms at which the last growth step happened (when the game is lost: the loss)
         },
         input: {} as Input,
         output: {} as { score : number },
@@ -41,7 +51,12 @@ const switchMachine = setup({
             | 
             { 
                 type: "input_move"
-                params: { direction: Direction }
+                params: { direction: Direction, at?: number }
+            }
+            |
+            {
+                type: "tick"
+                params: { at: number }
             }
             |
             {
@@ -120,9 +135,10 @@ const switchMachine = setup({
             clonedContext.cursor.value = newData.removedValue;
             return clonedContext;
         }),
-        increment_score: assign(({ context }, params: { direction: Direction }) => {
+        increment_score: assign(({ context }, params: { direction: Direction, at?: number }) => {
             const clonedContext = structuredClone(context);
             clonedContext.inputList.push(params.direction)
+            if (clonedContext.timerMode) clonedContext.times.push(params.at ?? 0)
             clonedContext.score = clonedContext.score + 1;
             return clonedContext;
         }),
@@ -131,8 +147,13 @@ const switchMachine = setup({
             clonedContext.score = 0;
             clonedContext.cursor = { x: 0, y: 0, value: 1 }
             clonedContext.inputList = [];
+            clonedContext.grown = 0;
+            clonedContext.times = [];
+            clonedContext.endAt = 0;
             if(params.input) {
                 clonedContext.url = params.input.url;
+                clonedContext.timerMode = params.input.timerMode;
+                clonedContext.seed = params.input.seed;
                 clonedContext.canva = structuredClone(params.input.canva);
                 clonedContext.initialCanva = structuredClone(params.input.canva);
                 clonedContext.canvaIndexes.rows = Array.from({ length: params.input.canva.length }, (_, i) => i);
@@ -143,8 +164,31 @@ const switchMachine = setup({
                 clonedContext.canvaIndexes.rows = Array.from({ length: clonedContext.initialCanva.length }, (_, i) => i);
                 clonedContext.canvaIndexes.columns = Array.from({ length: clonedContext.initialCanva[0].length }, (_, i) => i);
             }
+            clonedContext.minArea = clonedContext.canva.length * clonedContext.canva[0].length;
 
             return clonedContext;
+        }),
+        // One growth step: a new row on top, then a new column on the right, alternating.
+        // Steps are applied one at a time (evaluated in between) so a live game and its replay take the same path.
+        grow_canva: assign(({ context }, params: { at: number }) => {
+            const clonedContext = structuredClone(context);
+            clonedContext.endAt = params.at;
+            const { canva, canvaIndexes, cursor } = clonedContext;
+            const line = growLine(clonedContext.seed, clonedContext.grown, clonedContext.grown % 2 === 0 ? canva[0].length : canva.length);
+            if (clonedContext.grown % 2 === 0) {
+                canva.push(line);
+                canvaIndexes.rows.push(Math.max(-1, ...canvaIndexes.rows) + 1);
+                if (cursor.y === canva.length) cursor.y++; // cursor was on the top border, follow it
+            } else {
+                canva.forEach((row, i) => row.push(line[i]));
+                canvaIndexes.columns.push(Math.max(-1, ...canvaIndexes.columns) + 1);
+                if (cursor.x === canva[0].length) cursor.x++; // cursor was on the right border
+            }
+            clonedContext.grown++;
+            return clonedContext;
+        }),
+        track_area: assign({
+            minArea: ({ context }) => Math.min(context.minArea, context.canva.length * context.canva[0].length),
         }),
         resize_canva: assign(({ context }) => {
             const clonedContext = structuredClone(context);
@@ -198,6 +242,10 @@ const switchMachine = setup({
             }
             return false;
         },
+        // Time challenge: the clock says the grid should have grown more than it has
+        is_growth_due: ({ context }, params: { at?: number }) =>
+            context.timerMode && params.at !== undefined && Math.floor(params.at / GROW_MS) > context.grown,
+        is_overgrown: ({ context }) => context.canva.length > MAX_SIDE || context.canva[0].length > MAX_SIDE,
         is_full_line: ({ context }) => {
             const { rows, columns } = checkValues(context.canva);
             if (rows.length > 0 || columns.length > 0) {
@@ -217,6 +265,12 @@ const switchMachine = setup({
             value: 1
         },
         url : input.url,
+        timerMode: input.timerMode,
+        seed: input.seed,
+        grown: 0,
+        times: [],
+        endAt: 0,
+        minArea: input.canva.length * input.canva[0].length,
         canva: input.canva,
         initialCanva: input.canva,
         canvaIndexes: {
@@ -238,7 +292,26 @@ const switchMachine = setup({
     states: {
         "Game_Idle": {
             on: {
+                tick: [
+                    {
+                        target: "Game_Canva_Evaluation",
+                        guard: { type: "is_growth_due", params: ({ event }) => ({ at: event.params.at }) },
+                        actions: [
+                            { type: "grow_canva", params: ({ event }) => ({ at: event.params.at ?? 0 }) },
+                            raise(({ event }) => event), // play the event again: more growth may be due, or the move itself
+                        ],
+                    },
+                ],
                 input_move: [
+                    // The clock comes first: grow, evaluate, then play the same move on the grown grid
+                    {
+                        target: "Game_Canva_Evaluation",
+                        guard: { type: "is_growth_due", params: ({ event }) => ({ at: event.params.at }) },
+                        actions: [
+                            { type: "grow_canva", params: ({ event }) => ({ at: event.params.at ?? 0 }) },
+                            raise(({ event }) => event), // play the event again: more growth may be due, or the move itself
+                        ],
+                    },
                     {
                         target: "Game_Idle",
                         guard: { 
@@ -247,7 +320,7 @@ const switchMachine = setup({
                         },
                     },
                     {
-                        target: "Game_Idle",
+                        target: "Game_Canva_Evaluation",
                         actions: [
                             {
                                 type: 'move_cursor',
@@ -256,8 +329,8 @@ const switchMachine = setup({
                             },
                             { 
                                 type: "increment_score",
-                                params: ({ event }) => ({ direction: event.params.direction })
-                            }
+                                params: ({ event }) => ({ direction: event.params.direction, at: event.params.at })
+                            },
                         ],
                         guard: {
                             type: "is_cursor_move",
@@ -274,7 +347,7 @@ const switchMachine = setup({
                             },
                             { 
                                 type: "increment_score",
-                                params: ({ event }) => ({ direction: event.params.direction })
+                                params: ({ event }) => ({ direction: event.params.direction, at: event.params.at })
                              }
                         ],
                     },
@@ -283,11 +356,18 @@ const switchMachine = setup({
         },
 
         "Game_Canva_Evaluation": {
+            entry: "track_area",
             always: [
                 {
                     target: "Game_End",
                     guard: {
                         type: "is_win_condition",
+                    },
+                },
+                {
+                    target: "Game_Over",
+                    guard: {
+                        type: "is_overgrown",
                     },
                 },
                 {
@@ -307,6 +387,9 @@ const switchMachine = setup({
         },
 
         "Game_End": {},
+
+        // Time challenge only: the grid outgrew the limit
+        "Game_Over": {},
 
     },
 

@@ -3,21 +3,11 @@
 import Link from "next/link";
 import { Sunrise, CircleArrowRight, Timer, Dices } from "lucide-react";
 import { motion } from "motion/react"
-import { useToast } from "@/hooks/use-toast";
 import { getDailyString } from "@/lib/utils";
 import { useState, useEffect } from "react";
 import { getRandomString } from "@/lib/utils";
 
 export default function Home() {
-  const { toast } = useToast()
-  const notAvailable = () => {
-    toast({
-      title: "Mode not available yet",
-      description: "I am working on it, stay tuned !",
-      duration: 5000
-    })
-  }
-
     // Add random string to useEffect to avoid hydration errrors
     const [randomString, setRandomString] = useState("");
     useEffect(()=>{
@@ -84,8 +74,17 @@ export default function Home() {
         </motion.div >
       </Link>
       
-      <Link onClick={notAvailable} href="" className="grow ">
-        <motion.div whileHover={{ scale: 1.05 }} className="grow flex flex-col p-4 bg-background  cursor-not-allowed opacity-30 rounded-lg">
+      <Link
+        className="grow "
+        href={{
+          pathname: '/g',
+          query: {
+            s: getDailyString(),
+            cs: '6x8',
+            t: 'true'
+          },
+        }} >
+        <motion.div whileHover={{ scale: 1.05 }} className="grow flex flex-col p-4 bg-background cursor-pointer rounded-lg">
 
           <div className="py-4">
 
@@ -95,7 +94,7 @@ export default function Home() {
             Time challenge Mode
           </h2>
           <p className="grow text-xl my-4">
-            Solve the grid before it outgrows you.
+            The daily grid grows a line every few moves. Clear it before it outgrows you.
           </p>
           <div className="flex justify-between items-center">
             <span className="font-bold text-xl">

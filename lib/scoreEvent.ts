@@ -10,37 +10,54 @@ export const dTag = (url: string) => `${APP}:${url}`;
 
 const DIRECTIONS: Direction[] = ['up', 'left', 'down', 'right'];
 const MAX_MOVES = 500;
+// Time challenge timestamps are self-reported (ms since the first move). Bounds only stop casual tampering.
+const MAX_TIME = 30 * 60 * 1000;
+const MIN_GAP = 120; // faster than a human can swipe
 
 export interface ScorePayload {
   v: 1;
   nickname: string;
   inputs: Direction[];
+  // Time challenge only: ms since the clock started (first move attempt), one per input, and the time the grid was lost
+  times?: number[];
+  end?: number;
 }
 
 export interface CommunityScore {
   pubkey: string;
   nickname: string;
   url: string;
-  score: number; // nombre de coups, moins = mieux
+  score: number; // number of moves
+  won: boolean;  // false only in the time challenge (grid outgrew the limit)
+  rank: number;  // lower is better, see rankOf
   timestamp: number;
 }
 
-// Rejoue les coups sur la vraie machine : renvoie le score, ou null si la partie n'est pas une victoire exacte.
-export function replay(url: string, inputs: Direction[]): number | null {
+// One sortable number, so local highscores, sorting and "is this a record" share a single rule.
+// Win: its moves (< 1000, same as before the time challenge). Loss: 1000 x smallest grid area reached + moves.
+export const rankOf = (won: boolean, moves: number, minArea: number) => won ? moves : 1000 * minArea + moves;
+export const formatRank = (rank: number) => rank < 1000 ? `${rank} moves` : `lost, down to ${Math.floor(rank / 1000)} tiles`;
+
+// Replays the moves on the real machine: returns the result, or null if the game did not end exactly with the last move.
+export function replay(url: string, inputs: Direction[], times?: number[], end?: number): { won: boolean; moves: number; rank: number } | null {
   const p = new URLSearchParams(url);
   const { validParams, input } = matrixFromParams({
-    s: p.get('s') || '', cs: p.get('cs') || '', c: p.get('c') || '', t: '',
+    s: p.get('s') || '', cs: p.get('cs') || '', c: p.get('c') || '', t: p.get('t') || '',
   });
   if (!validParams) return null;
   const actor = createActor(switchMachine, { input }).start();
   try {
-    for (const dir of inputs) {
-      if (actor.getSnapshot().value === 'Game_End') return null; // coups après la victoire
-      actor.send({ type: 'input_move', params: { direction: dir } });
+    const over = () => ['Game_End', 'Game_Over'].includes(actor.getSnapshot().value as string);
+    for (const [i, dir] of inputs.entries()) {
+      if (over()) return null; // moves after the end
+      actor.send({ type: 'input_move', params: { direction: dir, at: times?.[i] } });
     }
+    if (end !== undefined && !over()) actor.send({ type: 'tick', params: { at: end } }); // idle until the grid outgrew the limit
     const snap = actor.getSnapshot();
-    // un coup ignoré (hors grille) ne compte pas : score != nb d'entrées -> rejet
-    return snap.value === 'Game_End' && snap.context.score === inputs.length ? snap.context.score : null;
+    const won = snap.value === 'Game_End';
+    // an ignored move (off the grid) does not count: score != number of inputs -> rejected
+    if (!(won || snap.value === 'Game_Over') || snap.context.score !== inputs.length) return null;
+    return { won, moves: snap.context.score, rank: rankOf(won, snap.context.score, snap.context.minArea) };
   } finally {
     actor.stop();
   }
@@ -54,9 +71,16 @@ export function scoreFromEvent(event: Event, url: string): CommunityScore | null
     if (p.v !== 1 || typeof p.nickname !== 'string' || p.nickname.length > 20) return null;
     if (!Array.isArray(p.inputs) || p.inputs.length === 0 || p.inputs.length > MAX_MOVES) return null;
     if (!p.inputs.every(d => DIRECTIONS.includes(d))) return null;
-    const score = replay(url, p.inputs);
-    if (score === null) return null;
-    return { pubkey: event.pubkey, nickname: p.nickname, url, score, timestamp: event.created_at * 1000 };
+    const timed = new URLSearchParams(url).get('t') === 'true';
+    if (timed) {
+      const ok = (n: unknown) => Number.isInteger(n) && (n as number) >= 0 && (n as number) <= MAX_TIME;
+      if (!Array.isArray(p.times) || p.times.length !== p.inputs.length || !p.times.every(ok)) return null;
+      if (p.times.some((t, i) => i > 0 && t - p.times![i - 1] < MIN_GAP)) return null;
+      if (p.end !== undefined && !(ok(p.end) && p.end >= p.times[p.times.length - 1])) return null;
+    } else if (p.times !== undefined || p.end !== undefined) return null;
+    const r = replay(url, p.inputs, p.times, p.end);
+    if (r === null) return null;
+    return { pubkey: event.pubkey, nickname: p.nickname, url, score: r.moves, won: r.won, rank: r.rank, timestamp: event.created_at * 1000 };
   } catch {
     return null;
   }

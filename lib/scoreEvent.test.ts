@@ -2,8 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { createActor } from 'xstate';
 import { finalizeEvent, generateSecretKey } from 'nostr-tools/pure';
 import switchMachine, { type Direction } from '@/lib/switchMachine';
-import { matrixFromParams, generateRandomMatrix } from '@/lib/matrixHelpers';
-import { scoreFromEvent, dTag, SCORE_KIND } from '@/lib/scoreEvent';
+import { matrixFromParams, generateRandomMatrix, growLine, GROW_MS } from '@/lib/matrixHelpers';
+import { scoreFromEvent, dTag, rankOf, SCORE_KIND } from '@/lib/scoreEvent';
 import { friendLink, parseFriendCode } from '@/lib/links';
 import { nip19 } from 'nostr-tools';
 import { getPublicKey } from 'nostr-tools/pure';
@@ -58,4 +58,82 @@ it('code ami : aller-retour', () => {
   globalThis.location = { origin: 'http://x' } as Location;
   const ami = new URL(friendLink(code)).searchParams.get('ami')!;
   expect(parseFriendCode(ami)).toEqual({ label: 'bob', pubkey });
+});
+
+describe('time challenge', () => {
+  const TGRID = '?s=test&cs=3x3&t=true';
+  const params = (url: string) => { const p = new URLSearchParams(url); return { s: p.get('s') || '', cs: p.get('cs') || '', c: p.get('c') || '', t: p.get('t') || '' }; };
+  const newActor = () => createActor(switchMachine, { input: matrixFromParams(params(TGRID)).input }).start();
+
+  it('t is part of the grid identity, and needs a seed', () => {
+    expect(matrixFromParams(params(TGRID)).input.url).toBe(TGRID);
+    expect(matrixFromParams(params(GRID)).input.url).toBe(GRID);
+    expect(matrixFromParams({ s: '', cs: '2x2', c: '1234', t: 'true' }).validParams).toBe(false);
+  });
+
+  it('growth line is deterministic and never uniform (if this snapshot breaks, shared time challenges changed)', () => {
+    expect([0, 1, 2, 3].map(i => growLine('test', i, 4))).toMatchSnapshot();
+    for (let i = 0; i < 50; i++) expect(new Set(growLine('x', i, 3)).size).toBeGreaterThan(1);
+  });
+
+  const mv = (a: ReturnType<typeof newActor>, i: number, at: number) =>
+    a.send({ type: 'input_move', params: { direction: i % 2 ? 'left' : 'right', at } });
+
+  it('the grid grows with the clock, one step per GROW_MS, even without a move', () => {
+    const a = newActor();
+    mv(a, 0, 0);
+    a.send({ type: 'tick', params: { at: GROW_MS - 1 } });
+    expect(a.getSnapshot().context.grown).toBe(0);
+    a.send({ type: 'tick', params: { at: GROW_MS } });
+    expect(a.getSnapshot().context.grown).toBe(1);
+    a.send({ type: 'tick', params: { at: GROW_MS + 1 } });
+    expect(a.getSnapshot().context.grown).toBe(1);
+  });
+
+  it('a late move first catches up on the growth, then is played', () => {
+    const a = newActor();
+    mv(a, 0, 3 * GROW_MS);
+    expect(a.getSnapshot().context.grown).toBe(3);
+    expect(a.getSnapshot().context.score).toBe(1);
+  });
+
+  // Border moves only: nothing is cleared, so the grid keeps growing until it outgrows the limit.
+  // Live game: ticks every 250 ms like the page. The replay gets no ticks, only the moves and their times.
+  function lostGame() {
+    const a = newActor();
+    let at = 0, i = 0;
+    for (; at < 20 * GROW_MS && a.getSnapshot().value !== 'Game_Over'; at += 250) {
+      if (at % 1000 === 0) mv(a, i++, at);
+      a.send({ type: 'tick', params: { at } });
+    }
+    const c = a.getSnapshot().context;
+    expect(a.getSnapshot().value).toBe('Game_Over');
+    return { inputs: c.inputList, times: c.times, end: c.endAt, rank: rankOf(false, c.score, c.minArea) };
+  }
+  const tsign = (content: object) => sign({ v: 1, nickname: 'bob', ...content }, [['d', dTag(TGRID)]]);
+
+  it('a lost game replays to the same result without the ticks', () => {
+    const g = lostGame();
+    const s = scoreFromEvent(tsign(g), TGRID);
+    expect(s?.won).toBe(false);
+    expect(s?.rank).toBe(g.rank);
+    expect(s?.score).toBe(g.inputs.length);
+  });
+
+  it('rejects bad or missing timestamps, and an early end', () => {
+    const g = lostGame();
+    const { times, end, ...rest } = g;
+    expect(scoreFromEvent(tsign({ ...rest, end }), TGRID)).toBeNull(); // no times
+    expect(scoreFromEvent(tsign({ ...rest, times: times.slice(1), end }), TGRID)).toBeNull(); // wrong length
+    expect(scoreFromEvent(tsign({ ...rest, times: times.map(t => t / 10), end }), TGRID)).toBeNull(); // faster than a human
+    expect(scoreFromEvent(tsign({ ...rest, times: [...times].reverse(), end }), TGRID)).toBeNull(); // not increasing
+    expect(scoreFromEvent(tsign({ ...rest, times, end: 1000 }), TGRID)).toBeNull(); // end before the last move
+    expect(scoreFromEvent(tsign({ ...rest, times, end: times[times.length - 1] }), TGRID)).toBeNull(); // not lost yet at that time
+    expect(scoreFromEvent(tsign({ ...rest, times, end, inputs: [...rest.inputs, 'right'] }), TGRID)).toBeNull();
+  });
+
+  it('timestamps do not belong on a normal grid, and timed moves are not valid there', () => {
+    const g = lostGame();
+    expect(scoreFromEvent(sign({ v: 1, nickname: 'bob', ...g }), GRID)).toBeNull();
+  });
 });

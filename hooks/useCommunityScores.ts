@@ -20,7 +20,7 @@ export function useCommunityScores(url: string, authors: string[] | null) {
     const close = subscribeScores(url, authors, s => {
       const prev = byKey.get(s.pubkey);
       if (!prev || prev.timestamp < s.timestamp) byKey.set(s.pubkey, s);
-      setScores([...byKey.values()].sort((a, b) => a.score - b.score));
+      setScores([...byKey.values()].sort((a, b) => a.rank - b.rank));
       setIsLoading(false);
     });
     return () => { clearTimeout(timer); close(); };

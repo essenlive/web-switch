@@ -20,10 +20,10 @@ export function useCommunity() {
 
   const addFollowing = useCallback((code: string): string | null => {
     const f = parseFriendCode(code);
-    if (!f) return 'Code ami invalide';
-    if (f.pubkey === myPubkey) return "C'est toi !";
+    if (!f) return 'That friend code is not valid';
+    if (f.pubkey === myPubkey) return "That's you!";
     const cur = loadSettings();
-    if (cur.following.some(x => x.pubkey === f.pubkey)) return 'Déjà dans tes amis';
+    if (cur.following.some(x => x.pubkey === f.pubkey)) return 'Already in your friends';
     update({ ...cur, following: [...cur.following, f] });
     return null;
   }, [myPubkey]);
@@ -33,11 +33,16 @@ export function useCommunity() {
 
   // Les événements sont remplaçables : on republie tous les meilleurs scores locaux avec le nouveau pseudo
   const saveNickname = (nickname: string): string | null => {
-    if (!NICKNAME_RE.test(nickname)) return 'Pseudo : 3 à 20 caractères (lettres, chiffres, _ ou -)';
+    if (!NICKNAME_RE.test(nickname)) return 'Nickname must be 3 to 20 characters: letters, numbers, _ or -';
     update({ ...settings, nickname });
     try {
-      const all: Record<string, Direction[] | null> = JSON.parse(localStorage.getItem('localHighscoresInputs') || '{}');
-      Object.entries(all).forEach(([url, inputs]) => { if (url && inputs?.length) publishScore(url, { nickname, inputs }); });
+      // Timed games are stored with their timestamps, the other ones are a plain list of moves
+      type Stored = Direction[] | { inputs: Direction[]; times: number[]; end?: number } | null;
+      const all: Record<string, Stored> = JSON.parse(localStorage.getItem('localHighscoresInputs') || '{}');
+      Object.entries(all).forEach(([url, v]) => {
+        const p = Array.isArray(v) ? { inputs: v } : v;
+        if (url && p?.inputs?.length) publishScore(url, { nickname, ...p });
+      });
     } catch {}
     return null;
   };
