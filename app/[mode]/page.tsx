@@ -13,6 +13,8 @@ import { useControls } from '@/hooks/use-controls';
 import { useLocalStorage } from "@/hooks/use-local-storage";
 import { getRandomString } from "@/lib/utils";
 import { InputList } from '@/components/inputList';
+import { useCommunity } from '@/hooks/useCommunity';
+import { publishScore } from '@/lib/nostr';
 
 export default function Page() {
   const router = useRouter()
@@ -41,6 +43,7 @@ export default function Page() {
   }, [validParams, toast, error, router]);
   
   const [snapshot, send] = useMachine(switchMachine, { input: input });
+  const { nickname } = useCommunity();
   
 
   const [localHighscores, setLocalHighscores] = useLocalStorage<object>("localHighscores", { [snapshot.context.url]: null })
@@ -64,8 +67,10 @@ const [localHighscoresInputs, setLocalHighscoresInputs] = useLocalStorage<object
       setLocalHighscores(localHighscores)
       localHighscoresInputs[snapshot.context.url] = snapshot.context.inputList;
       setLocalHighscoresInputs(localHighscoresInputs)
+      // Seul un nouveau record est publié (l'événement est remplaçable : un pire score écraserait le meilleur)
+      if (nickname) publishScore(snapshot.context.url, { nickname, inputs: snapshot.context.inputList })
     }
-  }, [snapshot.value, snapshot.context.url, localHighscores, setLocalHighscores, snapshot.context.score])
+  }, [snapshot.value, snapshot.context.url, localHighscores, setLocalHighscores, snapshot.context.score, nickname])
   
 
   // Add random string to useEffect to avoid hydration errrors

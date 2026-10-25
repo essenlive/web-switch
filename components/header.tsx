@@ -1,7 +1,7 @@
 'use client'
 
 import { cn } from "@/lib/utils"
-import { Info, ArrowUpDown } from "lucide-react";
+import { Info, ArrowUpDown, Users, Trophy } from "lucide-react";
 import Link from "next/link";
 import { HelpScreen } from "@/components/helpScreen";
 import React, { useState } from "react";
@@ -25,6 +25,16 @@ export function Header({
                     <h1 className="ml-4 text-2xl uppercase text-foreground">
                         Switch
                     </h1>
+                    </motion.div>
+                </Link>
+                <Link href="/leaderboard" aria-label="Leaderboard">
+                    <motion.div whileHover={{ scale: 1.1 }} className="flex justify-center items-center p-3 aspect-square bg-background rounded-lg">
+                        <Trophy className="text-foreground" size={24} />
+                    </motion.div>
+                </Link>
+                <Link href="/community" aria-label="Community">
+                    <motion.div whileHover={{ scale: 1.1 }} className="flex justify-center items-center p-3 aspect-square bg-background rounded-lg">
+                        <Users className="text-foreground" size={24} />
                     </motion.div>
                 </Link>
                 <motion.div 

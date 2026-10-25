@@ -5,6 +5,10 @@ import { useToast } from "@/hooks/use-toast"
 import { motion, AnimatePresence} from "motion/react"
 import { getMatrixString } from "@/lib/matrixHelpers"
 import { type Direction } from "@/lib/switchMachine";
+import { useState } from "react"
+import { Leaderboard } from "@/components/leaderboard"
+import { useCommunity } from "@/hooks/useCommunity"
+import { friendLink } from "@/lib/links"
 
 function getInputListIcons(inputList: Direction[]):string{
     const DIRECTION_ARROWS = new Map(Object.entries({
@@ -29,6 +33,8 @@ export function EndScreen({
     ...props
 }) {
     const { toast } = useToast()
+    const { friendCode } = useCommunity()
+    const [withFriendLink, setWithFriendLink] = useState(false)
     const copyToClipboard = (options? : undefined | 'withCanva' | 'withInputs') => {
         let clipboardContent: string = ''
         if(options === 'withCanva'){
@@ -42,6 +48,7 @@ export function EndScreen({
         else{
             clipboardContent = `🎊 I solved this switch grid in ${highscore !== null && highscore < score ? highscore : score} moves.\nTry yourself !\nhttps://switch.essenlive.xyz/g${url}`
         }
+        if (withFriendLink && friendCode) clipboardContent += `\nAdd me : ${friendLink(friendCode)}`
         navigator.clipboard.writeText(clipboardContent)
 
         toast({
@@ -119,7 +126,15 @@ export function EndScreen({
         )}
 
         </>)}
+        {friendCode && (
+            <label className="flex items-center gap-2 mt-2">
+                <input type="checkbox" checked={withFriendLink} onChange={e => setWithFriendLink(e.target.checked)} />
+                Add my friend link when sharing
+            </label>
+        )}
         </div>
+
+        <Leaderboard url={url} />
 
             <motion.div whileHover={{ scale: 1.05 }} onClick={restart} className="flex justify-between items-center p-4 bg-background rounded-lg cursor-pointer">
             <span className="font-bold text-xl">

@@ -1,0 +1,17 @@
+import { APP } from '@/lib/scoreEvent';
+
+export interface Following { pubkey: string; label: string }
+export interface CommunitySettings { nickname: string | null; following: Following[] }
+
+const KEY = `${APP}-community`;
+export const NICKNAME_RE = /^[a-zA-Z0-9_-]{3,20}$/;
+
+export function loadSettings(): CommunitySettings {
+  try {
+    const s = JSON.parse(localStorage.getItem(KEY) || 'null');
+    return { nickname: s?.nickname ?? null, following: Array.isArray(s?.following) ? s.following : [] };
+  } catch { return { nickname: null, following: [] }; }
+}
+export function saveSettings(s: CommunitySettings) {
+  try { localStorage.setItem(KEY, JSON.stringify(s)); } catch {}
+}

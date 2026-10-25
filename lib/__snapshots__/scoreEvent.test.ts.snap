@@ -1,0 +1,21 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`snapshot de la grille de seed connue (si ça casse, les défis partagés ont changé) 1`] = `
+[
+  [
+    4,
+    2,
+    3,
+  ],
+  [
+    2,
+    3,
+    1,
+  ],
+  [
+    4,
+    3,
+    3,
+  ],
+]
+`;
