@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { createActor } from 'xstate';
 import { finalizeEvent, generateSecretKey } from 'nostr-tools/pure';
 import switchMachine, { type Direction } from '@/lib/switchMachine';
-import { matrixFromParams, generateRandomMatrix, growLine, GROW_MS } from '@/lib/matrixHelpers';
+import { matrixFromParams, generateRandomMatrix, growLine, growMs } from '@/lib/matrixHelpers';
 import { scoreFromEvent, dTag, rankOf, SCORE_KIND } from '@/lib/scoreEvent';
 import { friendLink, parseFriendCode } from '@/lib/links';
 import { nip19 } from 'nostr-tools';
@@ -62,6 +62,7 @@ it('code ami : aller-retour', () => {
 
 describe('time challenge', () => {
   const TGRID = '?s=test&cs=3x3&t=true';
+  const GROW_MS = growMs([[1, 1, 1], [1, 1, 1], [1, 1, 1]]); // 3x3 grid
   const params = (url: string) => { const p = new URLSearchParams(url); return { s: p.get('s') || '', cs: p.get('cs') || '', c: p.get('c') || '', t: p.get('t') || '' }; };
   const newActor = () => createActor(switchMachine, { input: matrixFromParams(params(TGRID)).input }).start();
 
@@ -102,7 +103,7 @@ describe('time challenge', () => {
   function lostGame() {
     const a = newActor();
     let at = 0, i = 0;
-    for (; at < 20 * GROW_MS && a.getSnapshot().value !== 'Game_Over'; at += 250) {
+    for (; at < 40 * GROW_MS && a.getSnapshot().value !== 'Game_Over'; at += 250) {
       if (at % 1000 === 0) mv(a, i++, at);
       a.send({ type: 'tick', params: { at } });
     }

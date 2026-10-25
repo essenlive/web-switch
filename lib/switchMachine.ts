@@ -8,7 +8,7 @@ import {
     addToRowEnd, 
     addToRowStart,
     growLine,
-    GROW_MS,
+    growMs,
     MAX_SIDE
 } from "@/lib/matrixHelpers"
 
@@ -244,7 +244,7 @@ const switchMachine = setup({
         },
         // Time challenge: the clock says the grid should have grown more than it has
         is_growth_due: ({ context }, params: { at?: number }) =>
-            context.timerMode && params.at !== undefined && Math.floor(params.at / GROW_MS) > context.grown,
+            context.timerMode && params.at !== undefined && Math.floor(params.at / growMs(context.initialCanva)) > context.grown,
         is_overgrown: ({ context }) => context.canva.length > MAX_SIDE || context.canva[0].length > MAX_SIDE,
         is_full_line: ({ context }) => {
             const { rows, columns } = checkValues(context.canva);
@@ -272,7 +272,7 @@ const switchMachine = setup({
         endAt: 0,
         minArea: input.canva.length * input.canva[0].length,
         canva: input.canva,
-        initialCanva: input.canva,
+        initialCanva: structuredClone(input.canva),
         canvaIndexes: {
             rows: Array.from({ length: input.canva.length }, (_, i) => i),
             columns: Array.from({ length: input.canva[0].length }, (_, i) => i),

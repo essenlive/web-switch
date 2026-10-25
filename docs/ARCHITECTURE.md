@@ -122,9 +122,9 @@ Traps found while reading:
 
 ## 8. Time challenge
 
-URL `?s=…&cs=WxH&t=true` (seed required). Clock starts at the first move attempt; the grid grows by one line every `GROW_MS` (row on top, then column on the right, alternating; new line from `growLine(seed, index)`), and the game is lost when a side exceeds `MAX_SIDE` (`Game_Over`).
+URL `?s=…&cs=WxH&t=true` (seed required). Clock starts at the first move attempt; the grid grows by one line every `growMs(initialCanva)` (1000 ms × the smallest side of the starting grid, e.g. 12x9 → 9000 ms) (row on top, then column on the right, alternating; new line from `growLine(seed, index)`), and the game is lost when a side exceeds `MAX_SIDE` (`Game_Over`).
 
-- The machine never reads a clock. `input_move` and `tick` events carry `at` (ms since the clock started). In `Game_Idle`, if `floor(at / GROW_MS) > grown`, one growth step runs, the grid is evaluated, and the event is re-raised until no growth is due; then the move is played.
+- The machine never reads a clock. `input_move` and `tick` events carry `at` (ms since the clock started). In `Game_Idle`, if `floor(at / growMs) > grown`, one growth step runs, the grid is evaluated, and the event is re-raised until no growth is due; then the move is played.
 - The page sends `tick` every 250 ms and `at` with every move. Because growth depends only on `at`, a replay without ticks reaches the same states.
 - Payload adds `times` (one per input) and `end` (time of the loss, if lost). `scoreFromEvent` bounds them (integers, increasing, ≥ 120 ms apart, ≤ 30 min). **They are self-reported: a cheater can claim faster play.** This is the one part of the system that is not trustless.
-- Changing `GROW_MS`, `MAX_SIDE` or `growLine` changes every shared time-challenge result.
+- Changing `growMs`, `MAX_SIDE` or `growLine` changes every shared time-challenge result.
