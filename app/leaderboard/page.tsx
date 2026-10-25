@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { Leaderboard } from '@/components/leaderboard';
+import { MyScores } from '@/components/myScores';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -21,7 +22,9 @@ const VIEWS: { id: View; label: string }[] = [
 const playPath = (url: string) => `${modeOfUrl(url) === 'random' ? '/r' : '/g'}${url}`;
 
 export default function LeaderboardPage() {
-  const shared = useSearchParams().get('u'); // a specific grid, e.g. from "Leaderboard" next to a personal best
+  const params = useSearchParams();
+  const shared = params.get('u'); // a specific grid, e.g. from "Leaderboard" next to a personal best
+  const [tab, setTab] = useState<'board' | 'scores'>(params.get('tab') === 'scores' ? 'scores' : 'board');
   const [view, setView] = useState<View>(shared ? 'grid' : 'daily');
   const [day, setDay] = useState(''); // filled after mount: the local date differs between server and client
   const [gridText, setGridText] = useState(shared ?? '');
@@ -35,29 +38,40 @@ export default function LeaderboardPage() {
     <div className="flex flex-col gap-2">
       <div className="flex flex-col gap-3 p-4 bg-background rounded-lg">
         <h1 className="text-2xl font-bold">Leaderboard</h1>
-        <div role="group" aria-label="Leaderboard mode" className="flex flex-wrap gap-2">
-          {VIEWS.map(v => (
-            <Button key={v.id} className="h-11" variant={view === v.id ? 'default' : 'outline'} aria-pressed={view === v.id} onClick={() => setView(v.id)}>{v.label}</Button>
-          ))}
+        <div role="group" aria-label="Page section" className="flex gap-2">
+          <Button className="h-11 grow" variant={tab === 'board' ? 'default' : 'outline'} aria-pressed={tab === 'board'} onClick={() => setTab('board')}>Leaderboard</Button>
+          <Button className="h-11 grow" variant={tab === 'scores' ? 'default' : 'outline'} aria-pressed={tab === 'scores'} onClick={() => setTab('scores')}>My scores</Button>
         </div>
-        {view === 'grid' ? (
+        {tab === 'board' && (
           <>
-            <Label htmlFor="grid">Paste a grid link, a seed or a ?s=…&amp;cs=… query</Label>
-            <Input id="grid" className="h-11" value={gridText} autoComplete="off" aria-invalid={!!gridText && !gridUrl} onChange={e => setGridText(e.target.value)} />
-            {gridText && !gridUrl && <p role="status" className="text-destructive font-bold">That is not a valid grid.</p>}
-          </>
-        ) : (
-          <>
-            <Label htmlFor="day">{view === 'time' ? 'Time challenge of' : 'Daily grid of'}</Label>
-            <Input id="day" className="h-11" type="date" value={day} max={toDay(getDailyString())} onChange={e => e.target.value && setDay(e.target.value)} />
+            <div role="group" aria-label="Leaderboard mode" className="flex flex-wrap gap-2">
+              {VIEWS.map(v => (
+                <Button key={v.id} className="h-11" variant={view === v.id ? 'default' : 'outline'} aria-pressed={view === v.id} onClick={() => setView(v.id)}>{v.label}</Button>
+              ))}
+            </div>
+            {view === 'grid' ? (
+              <>
+                <Label htmlFor="grid">Paste a grid link, a seed or a ?s=…&amp;cs=… query</Label>
+                <div className="flex gap-2">
+                  <Input id="grid" className="h-11 min-w-0" value={gridText} autoComplete="off" aria-invalid={!!gridText && !gridUrl} onChange={e => setGridText(e.target.value)} />
+                  {url && <Button asChild className="h-11 shrink-0"><Link href={playPath(url)}>Play this grid</Link></Button>}
+                </div>
+                {gridText && !gridUrl && <p role="status" className="text-destructive font-bold">That is not a valid grid.</p>}
+              </>
+            ) : (
+              <>
+                <Label htmlFor="day">{view === 'time' ? 'Time challenge of' : 'Daily grid of'}</Label>
+                <div className="flex gap-2">
+                  <Input id="day" className="h-11 min-w-0" type="date" value={day} max={toDay(getDailyString())} onChange={e => e.target.value && setDay(e.target.value)} />
+                  {url && <Button asChild className="h-11 shrink-0"><Link href={playPath(url)}>Play this grid</Link></Button>}
+                </div>
+              </>
+            )}
           </>
         )}
-        {url && <Link href={playPath(url)} className="underline font-bold">Play this grid</Link>}
       </div>
 
-      {url && <Leaderboard url={url} />}
-
-      <p className="px-1"><Link href="/community" className="underline font-bold">Your highscores</Link> are on your profile, where you can replay or remove them.</p>
+      {tab === 'board' ? (url && <Leaderboard url={url} />) : <MyScores />}
     </div>
   );
 }

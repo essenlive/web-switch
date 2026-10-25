@@ -4,23 +4,19 @@ import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import QRCode from 'qrcode';
 import Link from 'next/link';
-import { Clapperboard, Copy, KeyRound, Trash2, TriangleAlert, UserPlus, UserRound } from 'lucide-react';
+import { Copy, KeyRound, Trash2, TriangleAlert, UserPlus, UserRound } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useCommunity } from '@/hooks/useCommunity';
 import { exportKey, importKey } from '@/lib/nostr';
 import { friendLink, keyLink } from '@/lib/links';
-import { MODES, modeOfUrl } from '@/lib/highscores';
-import { formatRank } from '@/lib/scoreEvent';
-import { replayLink } from '@/lib/replay';
 
-type Section = 'nickname' | 'friends' | 'backup' | 'scores' | 'danger';
-const playPath = (url: string) => `${modeOfUrl(url) === 'random' ? '/r' : '/g'}${url}`;
+type Section = 'nickname' | 'friends' | 'backup' | 'danger';
 const tray = 'flex flex-col gap-3 p-4 bg-background rounded-lg';
 
 export default function Community() {
-  const { nickname, following, myPubkey, friendCode, highscores, addFollowing, removeFollowing, saveNickname, removeHighscore, deleteProfile } = useCommunity();
+  const { nickname, following, myPubkey, friendCode, highscores, addFollowing, removeFollowing, saveNickname, deleteProfile } = useCommunity();
   const searchParams = useSearchParams();
   const [draft, setDraft] = useState('');
   useEffect(() => setDraft(nickname ?? ''), [nickname]); // the form starts on the current nickname
@@ -125,32 +121,8 @@ export default function Community() {
       )}
 
       <section className={tray}>
-        <h2 className="text-xl font-bold">Your highscores</h2>
-        {highscores.length === 0 ? <p>Solve a grid and your best shows up here, per mode.</p> : MODES.map(m => {
-          const rows = highscores.filter(b => b.mode === m.id).sort((a, b) => a.url < b.url ? 1 : -1);
-          if (!rows.length) return null;
-          return (
-            <div key={m.id} className="flex flex-col gap-1">
-              <h3 className="font-bold text-muted-foreground">{m.label}</h3>
-              <ul className="flex flex-col gap-1">
-                {rows.map(b => (
-                  <li key={b.url} className="flex items-center justify-between gap-2">
-                    <span className="min-w-0 truncate">{formatRank(b.rank)} <span className="text-sm text-muted-foreground">{b.url.replace('?', '')}</span></span>
-                    <span className="flex items-center gap-3 shrink-0">
-                      <Link href={playPath(b.url)} className="underline">Play</Link>
-                      <Link href={`/leaderboard?u=${encodeURIComponent(b.url)}`} className="underline">Ranking</Link>
-                      {b.inputs && <Link href={replayLink({ query: b.url, moves: b.inputs, times: b.times })} aria-label="Watch the replay" title="Watch the replay"><Clapperboard size={18} /></Link>}
-                      <button type="button" aria-label={`Remove my score on ${b.url.replace('?', '')}`} title="Remove from this device and the community" className="cursor-pointer rounded-sm p-1 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => { removeHighscore(b.url); say('scores', 'Score removed'); }}>
-                        <Trash2 size={18} />
-                      </button>
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          );
-        })}
-        {renderNote('scores')}
+        <h2 className="text-xl font-bold">Your scores</h2>
+        <p>Replay or remove your highscores on the <Link href="/leaderboard?tab=scores" className="underline font-bold">leaderboard page</Link>.</p>
       </section>
 
       {(nickname || following.length > 0) && (
