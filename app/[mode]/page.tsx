@@ -9,8 +9,8 @@ import { Score } from "@/components/score";
 import { Grid } from "@/components/grid";
 import { useSearchParams, useParams, useRouter } from 'next/navigation'
 import { matrixFromParams, growMs } from "@/lib/matrixHelpers"
-import { useToast } from "@/hooks/use-toast";
-import { useControls } from '@/hooks/use-controls';
+import { useToast } from "@/hooks/useToast";
+import { useControls } from '@/hooks/useControls';
 import { readBest, saveHighscore } from "@/lib/profile";
 import { getRandomString } from "@/lib/utils";
 import { InputList } from '@/components/inputList';

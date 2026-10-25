@@ -1,6 +1,6 @@
 import { cn } from '@/lib/utils';
 import { useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from "motion/react";
+import { AnimatePresence, m } from "motion/react"
 import { type Direction } from "@/lib/switchMachine";
 import { ArrowUp, ArrowRight, ArrowDown, ArrowLeft } from "lucide-react";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
@@ -44,7 +44,7 @@ export function InputList({
                             const Arrow = DIRECTION_ARROWS[input]
                             return (
 
-                            <motion.div
+                            <m.div
                                 ref={i === inputIndex ? scrollToRef : null}
                                 key={`input-${i}`}
                                 initial={{ opacity: 0, scale: 0.8 }}
@@ -57,7 +57,7 @@ export function InputList({
                                 )}
                             >
                                 <Arrow size={16} aria-label={input} />
-                            </motion.div>
+                            </m.div>
                             )
                         })}
                     </AnimatePresence>

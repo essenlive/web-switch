@@ -1,6 +1,6 @@
 import { addPadding } from '@/lib/matrixHelpers';
 import { cn } from '@/lib/utils';
-import { motion, AnimatePresence } from "motion/react";
+import { AnimatePresence, m } from "motion/react"
 import { memo, useMemo } from 'react';
 import type { Direction } from '@/lib/switchMachine';
 import { Circle, Square, Triangle, Diamond } from 'lucide-react';
@@ -69,7 +69,7 @@ export const Grid = memo(function Grid({
 
             <AnimatePresence mode="popLayout">
                  {padded.map((row, y) => (
-                     <motion.div 
+                     <m.div 
                          key={`row-${indexes.rows[y]}`} 
                          layout="position"
                          className={`row-${indexes.rows[y]} relative flex gap-2`}
@@ -92,7 +92,7 @@ export const Grid = memo(function Grid({
                             />
                         ))}
                         </AnimatePresence>
-                    </motion.div>
+                    </m.div>
                 ))}
                 </AnimatePresence>
         </div>
@@ -105,7 +105,7 @@ function Tile({ name, size, value, isCursor, slide, moveId, mountDelay }: {
 }) {
     const Shape = BLOCK_SHAPES[value]
     return (
-        <motion.div
+        <m.div
             layout="position"
             initial={{ opacity: 0, scale: 0.85 }}
             animate={{ opacity: 1, scale: 1, transition: { duration: 0.25, ease: EASE, delay: mountDelay } }}
@@ -117,7 +117,7 @@ function Tile({ name, size, value, isCursor, slide, moveId, mountDelay }: {
             {/* the ring moves with the cursor at once: any glide reads as input lag */}
             {isCursor && <span className="pointer-events-none absolute -inset-1 z-10 rounded-md ring-2 ring-foreground" />}
             {/* remounts on a slide: the tile arrives from where it came */}
-            <motion.div
+            <m.div
                 key={slide ? `slide-${moveId}` : 'still'}
                 initial={slide ? { x: `${slide.x}%`, y: `${slide.y}%` } : false}
                 animate={{ x: 0, y: 0 }}
@@ -125,7 +125,7 @@ function Tile({ name, size, value, isCursor, slide, moveId, mountDelay }: {
                 className={cn("size-full rounded-sm flex justify-center items-center", BLOCK_COLORS[value], BLOCK_INK[value])}
             >
                 {Shape && <Shape aria-hidden className="size-1/2" fill="currentColor" strokeWidth={2.5} />}
-            </motion.div>
-        </motion.div>
+            </m.div>
+        </m.div>
     )
 }

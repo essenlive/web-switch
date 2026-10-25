@@ -3,7 +3,7 @@
 import * as React from "react"
 import { Check, Palette } from "lucide-react"
 import { useTheme } from "next-themes"
-import { motion } from "motion/react"
+import { m } from "motion/react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,7 +22,7 @@ export function ThemePicker() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <motion.button
+        <m.button
           type="button"
           aria-label="Choose theme"
           title="Theme"
@@ -30,7 +30,7 @@ export function ThemePicker() {
           whileTap={{ scale: 0.95 }}
           className="flex justify-center items-center p-3 aspect-square shrink-0 cursor-pointer bg-background text-foreground rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
           <Palette size={24} />
-        </motion.button>
+        </m.button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-48">
         {THEMES.map(({ id, name }) => (

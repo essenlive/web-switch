@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils"
 import { Move, BookText, MessageCircleQuestion, SquareArrowOutUpRight, CircleX } from "lucide-react"
 import Link from "next/link"
-import { motion, AnimatePresence } from "motion/react"
+import { AnimatePresence, m } from "motion/react"
 import { useEffect, useRef } from "react"
 
 export function HelpScreen({
@@ -44,7 +44,7 @@ export function HelpScreen({
     return (
 <AnimatePresence>
   {visible && (
-            <motion.div
+            <m.div
                     key="helpScreen"
                     ref={dialogRef}
                     role="dialog"
@@ -58,9 +58,9 @@ export function HelpScreen({
             <div className="p-4 flex flex-col max-w-xl mx-auto gap-2 min-h-dvh">
                 <div className="sticky top-0 z-10 flex items-center justify-between gap-2 p-3 bg-background rounded-lg">
                     <span className="text-xl font-bold pl-1">How to play</span>
-                    <motion.button ref={closeRef} type="button" aria-label="Close" whileTap={{ scale: 0.95 }} onClick={closeHelp} className="flex justify-center items-center p-1 cursor-pointer rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                    <m.button ref={closeRef} type="button" aria-label="Close" whileTap={{ scale: 0.95 }} onClick={closeHelp} className="flex justify-center items-center p-1 cursor-pointer rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                         <CircleX size={32} />
-                    </motion.button>
+                    </m.button>
                 </div>
                 <section className="flex flex-col gap-2 p-4 bg-background rounded-lg">
                     <div className="flex items-center gap-3">
@@ -102,7 +102,7 @@ export function HelpScreen({
                     </ul>
                 </section>
             </div>
-        </motion.div>)}
+        </m.div>)}
         </AnimatePresence>
     )
 }

@@ -5,6 +5,7 @@ import { Header } from "@/components/header";
 import { Toaster } from "@/components/ui/toaster"
 import { Suspense } from 'react'
 import Script from 'next/script'
+import { MotionProvider } from "@/components/motion-provider"
 import { ThemeProvider } from "@/components/theme-provider"
 import { THEME_IDS } from "@/lib/themes"
 
@@ -47,11 +48,13 @@ export default function RootLayout({
           >
             <main  className={`overscroll-contain antialiased  text-foreground relative flex flex-col p-4 space-y-2 justify-start min-h-dvh max-w-xl mx-auto`}>
 
+            <MotionProvider>
             <Header />
             <Suspense>
               { children }
 
             </Suspense>
+            </MotionProvider>
 
             </main>
           <Toaster />

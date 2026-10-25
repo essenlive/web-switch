@@ -1,8 +1,8 @@
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Share2, CircleArrowRight } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
-import { motion, AnimatePresence} from "motion/react"
+import { useToast } from "@/hooks/useToast"
+import { AnimatePresence, m } from "motion/react"
 import { getMatrixString } from "@/lib/matrixHelpers"
 import { ScopedLeaderboard } from "@/components/leaderboard"
 
@@ -53,7 +53,7 @@ export function EndScreen({
         <AnimatePresence>
 
         { visible && (
-        <motion.div 
+        <m.div 
             key="endScreen"
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
@@ -82,7 +82,7 @@ export function EndScreen({
                 Play again
                 <CircleArrowRight />
             </Button>
-        </motion.div>)}
+        </m.div>)}
         </AnimatePresence>
     )
 }
