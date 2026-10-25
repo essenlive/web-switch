@@ -173,7 +173,7 @@ const [localHighscoresInputs, setLocalHighscoresInputs] = useLocalStorage<object
           restart={restart}
           score={snapshot.context.score}
           highscore={highscoreLabel}
-          growIn={timer ? Math.ceil((growMs(snapshot.context.initialCanva) - (elapsed % growMs(snapshot.context.initialCanva))) / 1000) : null}
+          growIn={timer ? Math.ceil(Math.max(0, growMs(snapshot.context.initialCanva) - (elapsed - snapshot.context.clockBase)) / 1000) : null}
         />
       </div>
       <div className="bg-background rounded-lg px-4">

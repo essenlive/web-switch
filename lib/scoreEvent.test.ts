@@ -91,6 +91,19 @@ describe('time challenge', () => {
     expect(a.getSnapshot().context.grown).toBe(1);
   });
 
+  it('removing a line restarts the growth countdown', () => {
+    // The first row is already uniform: the first (cursor) move evaluates the grid and removes it
+    const canva = [[1, 1, 1], [2, 3, 2], [3, 2, 3]];
+    const a = createActor(switchMachine, { input: { timerMode: true, seed: 'test', canva, url: 'x' } }).start();
+    a.send({ type: 'input_move', params: { direction: 'right', at: 2000 } });
+    expect(a.getSnapshot().context.canva.length).toBe(2);
+    expect(a.getSnapshot().context.clockBase).toBe(2000);
+    a.send({ type: 'tick', params: { at: 2000 + GROW_MS - 1 } });
+    expect(a.getSnapshot().context.grown).toBe(0);
+    a.send({ type: 'tick', params: { at: 2000 + GROW_MS } });
+    expect(a.getSnapshot().context.grown).toBe(1);
+  });
+
   it('a late move first catches up on the growth, then is played', () => {
     const a = newActor();
     mv(a, 0, 3 * GROW_MS);

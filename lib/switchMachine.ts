@@ -43,6 +43,8 @@ const switchMachine = setup({
             grown: number;   // growth steps applied so far
             minArea: number; // smallest grid area reached, ranks a lost game
             times: number[]; // ms since the first move, one per accepted move
+            clockBase: number; // ms at which the current growth countdown started (reset when a line is removed)
+            lastAt: number;  // ms of the latest move
             endAt: number;   // ms at which the last growth step happened (when the game is lost: the loss)
         },
         input: {} as Input,
@@ -139,6 +141,7 @@ const switchMachine = setup({
             const clonedContext = structuredClone(context);
             clonedContext.inputList.push(params.direction)
             if (clonedContext.timerMode) clonedContext.times.push(params.at ?? 0)
+            clonedContext.lastAt = params.at ?? 0;
             clonedContext.score = clonedContext.score + 1;
             return clonedContext;
         }),
@@ -150,6 +153,8 @@ const switchMachine = setup({
             clonedContext.grown = 0;
             clonedContext.times = [];
             clonedContext.endAt = 0;
+            clonedContext.clockBase = 0;
+            clonedContext.lastAt = 0;
             if(params.input) {
                 clonedContext.url = params.input.url;
                 clonedContext.timerMode = params.input.timerMode;
@@ -185,6 +190,7 @@ const switchMachine = setup({
                 if (cursor.x === canva[0].length) cursor.x++; // cursor was on the right border
             }
             clonedContext.grown++;
+            clonedContext.clockBase += growMs(clonedContext.initialCanva); // next step is due one interval later
             return clonedContext;
         }),
         track_area: assign({
@@ -193,6 +199,8 @@ const switchMachine = setup({
         resize_canva: assign(({ context }) => {
             const clonedContext = structuredClone(context);
             const { rows, columns } = checkValues(clonedContext.canva);
+            // A removed line restarts the growth countdown
+            if (rows.length > 0 || columns.length > 0) clonedContext.clockBase = Math.max(clonedContext.clockBase, clonedContext.lastAt);
             if (rows.length > 0) {
                 clonedContext.canva = removeRow(
                     clonedContext.canva,
@@ -242,9 +250,9 @@ const switchMachine = setup({
             }
             return false;
         },
-        // Time challenge: the clock says the grid should have grown more than it has
+        // Time challenge: a full interval has passed since the countdown started
         is_growth_due: ({ context }, params: { at?: number }) =>
-            context.timerMode && params.at !== undefined && Math.floor(params.at / growMs(context.initialCanva)) > context.grown,
+            context.timerMode && params.at !== undefined && params.at - context.clockBase >= growMs(context.initialCanva),
         is_overgrown: ({ context }) => context.canva.length > MAX_SIDE || context.canva[0].length > MAX_SIDE,
         is_full_line: ({ context }) => {
             const { rows, columns } = checkValues(context.canva);
@@ -270,6 +278,8 @@ const switchMachine = setup({
         grown: 0,
         times: [],
         endAt: 0,
+        clockBase: 0,
+        lastAt: 0,
         minArea: input.canva.length * input.canva[0].length,
         canva: input.canva,
         initialCanva: structuredClone(input.canva),
