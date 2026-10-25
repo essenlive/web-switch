@@ -127,7 +127,7 @@ A neutral gray page and tray stack with a saturated four-color tile set; no bran
 
 ## Layout
 
-Single centered column, `max-w-xl`, 16px padding, 16px vertical gap between stacked trays, full dynamic viewport height (`min-h-dvh`). The header is a row of trays: a growing wordmark tray plus square icon trays (leaderboard, community, help, theme). The score bar mirrors it: moves on the left, restart and random in the center, highscore on the right. The grid grows to fill the remaining height and centers. Tiles are 24px squares with 8px gaps. Overlay screens (help) fill the page and stack trays.
+Single centered column, `max-w-xl`, 16px page padding, 8px between every tray (stacks and rows alike); 16px padding inside content trays, 12px inside compact control trays, 12px between groups within a tray, full dynamic viewport height (`min-h-dvh`). The header is a row of trays: a growing wordmark tray plus square icon trays (leaderboard, community, help, theme). The score bar mirrors it: moves on the left, restart and random in the center, highscore on the right. The grid grows to fill the remaining height and centers. Tiles are squares up to 40px that shrink to fit the column, with 8px gaps. Home mode cards are separate natural-height trays, 8px apart, tinted on hover. Boolean options are switches (48x28px track, ink when on), never raw checkboxes. Overlay screens (help) fill the page and stack trays.
 
 ## Elevation & Depth
 

@@ -43,7 +43,7 @@ export default function RootLayout({
             enableSystem
             disableTransitionOnChange
           >
-            <main  className={`overscroll-contain antialiased  text-foreground relative flex flex-col p-4 space-y-4 justify-start min-h-dvh max-w-xl mx-auto`}>
+            <main  className={`overscroll-contain antialiased  text-foreground relative flex flex-col p-4 space-y-2 justify-start min-h-dvh max-w-xl mx-auto`}>
 
             <Header />
             <Suspense>

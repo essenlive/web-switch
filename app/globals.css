@@ -131,3 +131,25 @@ body {
     @apply bg-background text-foreground;
   }
 }
+
+/* Tailwind 4 resets buttons to the default cursor; clickable things should say so */
+@layer base {
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  [role="switch"],
+  summary {
+    cursor: pointer;
+  }
+}
+
+/* Home cards arrive in a short cascade; visible by default, so no script is needed */
+@keyframes rise-in {
+  from { opacity: 0; transform: translateY(10px); }
+}
+.rise-in {
+  animation: rise-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+  animation-delay: calc(var(--i, 0) * 50ms);
+}
+@media (prefers-reduced-motion: reduce) {
+  @keyframes rise-in { from { opacity: 0; } }
+}

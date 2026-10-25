@@ -34,7 +34,7 @@ export default function LeaderboardPage() {
   const url = view === 'grid' ? gridUrl : seed ? `?s=${seed}&cs=${CS}${view === 'time' ? '&t=true' : ''}` : null;
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-2">
       <div className="flex flex-col gap-3 p-4 bg-background rounded-lg">
         <h1 className="text-2xl font-bold">Leaderboard</h1>
         <div role="group" aria-label="Leaderboard mode" className="flex flex-wrap gap-2">

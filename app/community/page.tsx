@@ -71,7 +71,7 @@ export default function Community() {
   const nicknameHint = 'nickname-hint';
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-2">
       <h1 className="sr-only">Community</h1>
 
       {pendingImport && (

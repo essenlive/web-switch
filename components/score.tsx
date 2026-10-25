@@ -15,7 +15,7 @@ export function Score({
     ...props
 }) {
     return (
-        <div className={cn("flex space-x-4 w-full", className)} {...props}>
+        <div className={cn("flex gap-2 w-full", className)} {...props}>
             <div className="grow flex items-center p-3 bg-background rounded-lg">
                 <MoveHorizontal aria-hidden />
                 <span className="ml-4 flex flex-col leading-none">

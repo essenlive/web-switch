@@ -135,9 +135,9 @@ const [localHighscoresInputs, setLocalHighscoresInputs] = useLocalStorage<object
 
   return (
     <MotionConfig reducedMotion="user">
-    <main className="grow flex flex-col items-stretch justify-stretch h-full w-full space-y-4">
+    <main className="grow flex flex-col items-stretch justify-stretch h-full w-full space-y-2">
       {/* swipes work from the board and the score row, not the scrolling move strip */}
-      <div className="grow flex flex-col space-y-4" {...gestureHandlers}>
+      <div className="grow flex flex-col space-y-2" {...gestureHandlers}>
         {!ended && (
           <div className="grow flex flex-col p-4 bg-background rounded-lg">
             <h2 className="text-sm font-bold text-muted-foreground">{title}</h2>

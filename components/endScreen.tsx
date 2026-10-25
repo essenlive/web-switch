@@ -1,5 +1,7 @@
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
+import { Switch } from "@/components/ui/switch"
+import { Label } from "@/components/ui/label"
 import { Share2, TextQuote, CircleArrowRight } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { motion, AnimatePresence} from "motion/react"
@@ -82,9 +84,9 @@ export function EndScreen({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, position: "absolute" }}
             transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-            className={cn("flex flex-col gap-4", className)} {...props}>
+            className={cn("flex flex-col gap-2", className)} {...props}>
 
-            <div className="flex flex-col p-4 bg-background rounded-lg gap-4">
+            <div className="flex flex-col p-4 bg-background rounded-lg gap-3">
                 <div>
                     <p className="text-sm text-muted-foreground">{lost ? "outgrown after" : "solved in"}</p>
                     <p className="text-6xl font-extrabold leading-none tracking-tight">
@@ -101,10 +103,10 @@ export function EndScreen({
                     </Button>
                 </div>
                 {friendCode && (
-                    <label className="flex items-center gap-2 text-sm">
-                        <input type="checkbox" checked={withFriendLink} onChange={e => setWithFriendLink(e.target.checked)} />
-                        Add my friend link when sharing
-                    </label>
+                    <div className="flex items-center justify-between gap-3 rounded-md bg-muted p-3">
+                        <Label htmlFor="friend-link" className="grow cursor-pointer text-base">Add my friend link when sharing</Label>
+                        <Switch id="friend-link" checked={withFriendLink} onCheckedChange={setWithFriendLink} />
+                    </div>
                 )}
             </div>
 

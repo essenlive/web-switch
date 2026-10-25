@@ -14,7 +14,7 @@ export function Leaderboard({ url }: { url: string }) {
   const { scores, isLoading } = useCommunityScores(url, authors);
 
   return (
-    <div className="flex flex-col gap-2 p-4 bg-background rounded-lg">
+    <div className="flex flex-col gap-3 p-4 bg-background rounded-lg">
       <div className="flex gap-2">
         <Button variant={world ? 'outline' : 'default'} onClick={() => setWorld(false)}>My community</Button>
         <Button variant={world ? 'default' : 'outline'} onClick={() => setWorld(true)}>World</Button>
