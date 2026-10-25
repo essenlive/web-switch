@@ -23,6 +23,7 @@ export default function Community() {
   const { nickname, following, myPubkey, friendCode, highscores, addFollowing, removeFollowing, saveNickname, removeHighscore, deleteProfile } = useCommunity();
   const searchParams = useSearchParams();
   const [draft, setDraft] = useState('');
+  useEffect(() => setDraft(nickname ?? ''), [nickname]); // the form starts on the current nickname
   const [friendInput, setFriendInput] = useState('');
   const [note, setNote] = useState<{ section: Section; text: string; error?: boolean } | null>(null);
   const [nsec, setNsec] = useState<string | null>(null);
@@ -99,15 +100,14 @@ export default function Community() {
           const err = saveNickname(draft);
           if (err) return say('nickname', err, true);
           say('nickname', 'Nickname saved');
-          setDraft('');
         }}
       >
         <h2 className="text-xl font-bold flex items-center gap-2"><UserRound aria-hidden /> {nickname ? 'Your nickname' : 'Pick a nickname to join the leaderboard'}</h2>
         {!nickname && <p>Your scores show up under this name. No account needed.</p>}
-        <Label htmlFor="nickname">{nickname ? `Current: ${nickname}. Change it` : 'Nickname'}</Label>
+        <Label htmlFor="nickname">{nickname ? 'Change your nickname' : 'Nickname'}</Label>
         <div className="flex flex-col sm:flex-row gap-2">
           <Input id="nickname" className="h-11" value={draft} aria-describedby={nicknameHint} aria-invalid={note?.section === 'nickname' && note.error} autoComplete="off" onChange={e => setDraft(e.target.value)} />
-          <Button type="submit" className="h-11">Save</Button>
+          {draft !== (nickname ?? '') && <Button type="submit" className="h-11">{nickname ? 'Update' : 'Save'}</Button>}
         </div>
         <p id={nicknameHint} className="text-sm text-muted-foreground">3 to 20 characters: letters, numbers, _ or -</p>
         {renderNote('nickname')}

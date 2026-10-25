@@ -80,8 +80,12 @@ function ReplayPage() {
   return (
     <MotionConfig reducedMotion="user">
     <main className="grow flex flex-col items-stretch justify-stretch h-full w-full space-y-2">
-      <form onSubmit={load} className="flex flex-col gap-2 p-4 bg-background rounded-lg">
-        <h2 className="text-sm font-bold text-muted-foreground">Replay a game</h2>
+      {/* Replays mostly arrive as links (end screen, leaderboard, profile): the form is for pasting one, so it steps aside once a replay plays */}
+      {frame ? (
+        <details className="p-4 bg-background rounded-lg">
+          <summary className="cursor-pointer text-sm font-bold text-muted-foreground rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">Load another replay</summary>
+          <div className="pt-3">
+      <form onSubmit={load} className="flex flex-col gap-2">
         <Label htmlFor="replay-link">Game link</Label>
         <Input id="replay-link" value={link} onChange={e => setLink(e.target.value)} placeholder="https://switch.essenlive.xyz/g?s=…&cs=6x8" />
         <Label htmlFor="replay-moves">Moves <span className="text-muted-foreground">(optional if the link has them)</span></Label>
@@ -89,6 +93,22 @@ function ReplayPage() {
         <Button type="submit" className="self-start">Load replay</Button>
         {(formError || inputError) && <p role="alert" className="text-sm text-destructive">{formError ?? inputError}</p>}
       </form>
+          </div>
+        </details>
+      ) : (
+        <div className="flex flex-col gap-2 p-4 bg-background rounded-lg">
+          <h2 className="text-sm font-bold text-muted-foreground">Replay a game</h2>
+          <p>Paste a game link, with its moves, to watch it play back. Replays also open from the end screen, the leaderboard and your profile.</p>
+      <form onSubmit={load} className="flex flex-col gap-2">
+        <Label htmlFor="replay-link">Game link</Label>
+        <Input id="replay-link" value={link} onChange={e => setLink(e.target.value)} placeholder="https://switch.essenlive.xyz/g?s=…&cs=6x8" />
+        <Label htmlFor="replay-moves">Moves <span className="text-muted-foreground">(optional if the link has them)</span></Label>
+        <Input id="replay-moves" value={moves} onChange={e => setMoves(e.target.value)} placeholder="urdlurdl or ⬆️ ➡️ ⬇️ ⬅️" />
+        <Button type="submit" className="self-start">Load replay</Button>
+        {(formError || inputError) && <p role="alert" className="text-sm text-destructive">{formError ?? inputError}</p>}
+      </form>
+        </div>
+      )}
 
       {frame && (
         <>
