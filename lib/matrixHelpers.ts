@@ -178,6 +178,22 @@ export function generateRandomMatrix(str: string, rows: number, cols: number): n
     return randomArray;
 }
 
+// Time challenge: every GROW_MS of play (clock starts at the first move) the grid gains a row, then a column, alternating.
+// Lose when a side exceeds MAX_SIDE. Changing these invalidates every shared time-challenge score.
+export const GROW_MS = 8000;
+export const MAX_SIDE = 12;
+
+// New line appended at the top (row) or right (column), derived from seed + growth index only,
+// so a replay rebuilds the exact same grid. Never uniform, otherwise it would vanish at once.
+export function growLine(seed: string, index: number, length: number): number[] {
+    const rng = new Prando(`${seed}:grow:${index}`);
+    let line: number[];
+    do {
+        line = Array.from({ length }, () => Math.floor(rng.next(1, 5)));
+    } while (length > 1 && line.every(v => v === line[0]));
+    return line;
+}
+
 
 export function matrixFromParams({s, cs, c, t}:{
   s: string,
@@ -189,6 +205,7 @@ export function matrixFromParams({s, cs, c, t}:{
   error : string | null,
   input : {
     timerMode: boolean,
+    seed: string,
     canva :number[][],
     url: string
   }
@@ -201,6 +218,7 @@ export function matrixFromParams({s, cs, c, t}:{
         validParams : false,
         input : {      
             timerMode : timerMode,
+            seed: "",
             canva :[
                 [4,4,1,1,1,1,4,4],
                 [4,1,4,4,4,4,1,4],
@@ -218,6 +236,8 @@ export function matrixFromParams({s, cs, c, t}:{
 
     // Return an error if canva size is missing
     if (!cs) return ({ error: "Canva size (cs) missing. ", ...invalidParams })
+    // The time challenge grows the grid from the seed, an explicit canva has none
+    if (timerMode && !s) return ({ error: "Time challenge needs a seed (s). ", ...invalidParams })
     // Return an error if canva data and seed are missing
     if (!c && !s) return ({ error: "Canva (c) and Seed (s) are missing, use one or the other. ", ...invalidParams })
 
@@ -246,6 +266,7 @@ export function matrixFromParams({s, cs, c, t}:{
             error: null,
             input: {
                 timerMode,
+                seed: "",
                 canva,
                 url
             }
@@ -255,12 +276,14 @@ export function matrixFromParams({s, cs, c, t}:{
     else if(s){
         const canva = generateRandomMatrix(s, canvaSize.height, canvaSize.width);
         // Reformat url
-        const url = `?s=${s}&cs=${canvaSize.width}x${canvaSize.height}`
+        // t is part of the identity: same seed, different rules, different leaderboard
+        const url = `?s=${s}&cs=${canvaSize.width}x${canvaSize.height}${timerMode ? "&t=true" : ""}`
         return {
             validParams: true,
             error: null,
             input: {
                 timerMode,
+                seed: s,
                 canva,
                 url
             }

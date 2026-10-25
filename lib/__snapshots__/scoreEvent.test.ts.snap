@@ -1,0 +1,50 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`snapshot de la grille de seed connue (si ça casse, les défis partagés ont changé) 1`] = `
+[
+  [
+    4,
+    2,
+    3,
+  ],
+  [
+    2,
+    3,
+    1,
+  ],
+  [
+    4,
+    3,
+    3,
+  ],
+]
+`;
+
+exports[`time challenge > growth line is deterministic and never uniform (if this snapshot breaks, shared time challenges changed) 1`] = `
+[
+  [
+    4,
+    4,
+    3,
+    3,
+  ],
+  [
+    4,
+    3,
+    2,
+    1,
+  ],
+  [
+    4,
+    4,
+    4,
+    2,
+  ],
+  [
+    4,
+    3,
+    1,
+    4,
+  ],
+]
+`;

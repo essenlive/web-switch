@@ -4,41 +4,45 @@ import { useCallback, useEffect } from 'react';
 let moveThreshold: number = 0;
 
 interface Actions {
-  ArrowLeft?: () => void;
-  ArrowRight?: () => void;
-  ArrowUp?: () => void;
-  ArrowDown?: () => void;
-  Space?: () => void;
-  SwipeLeft?: () => void;
-  SwipeRight?: () => void;
-  SwipeUp?: () => void;
-  SwipeDown?: () => void;
+  ArrowLeft: () => void;
+  ArrowRight: () => void;
+  ArrowUp: () => void;
+  ArrowDown: () => void;
+  Space: () => void;
+  SwipeLeft: () => void;
+  SwipeRight: () => void;
+  SwipeUp: () => void;
+  SwipeDown: () => void;
 }
 
 
 export function useControls(actions: Actions) {
 
   const handleKeyPress = useCallback((event: KeyboardEvent) => {
+    // Leave keys alone inside dialogs, and let Space activate focused controls
+    const el = event.target instanceof Element ? event.target : null
+    if (el?.closest('[role="dialog"]')) return;
+    if (event.key === " " && el?.closest('a, button, input, textarea, select')) return;
     switch (event.key) {
       case "ArrowLeft":
         event.preventDefault();
-        if(actions["ArrowLeft"])actions["ArrowLeft"]();
+        actions["ArrowLeft"]();
         break;
       case "ArrowRight":
         event.preventDefault();
-        if(actions["ArrowRight"])actions["ArrowRight"]();
+        actions["ArrowRight"]();
         break;
       case "ArrowUp":
         event.preventDefault();
-        if(actions["ArrowUp"])actions["ArrowUp"]();
+        actions["ArrowUp"]();
         break;
       case "ArrowDown":
         event.preventDefault();
-        if(actions["ArrowDown"])actions["ArrowDown"]();
+        actions["ArrowDown"]();
         break;
       case " ":
         event.preventDefault();
-        if(actions["Space"])actions["Space"]();
+        actions["Space"]();
         break;
       default: break;
     }
@@ -49,20 +53,19 @@ export function useControls(actions: Actions) {
     return () => { document.removeEventListener('keydown', handleKeyPress); };
   }, [handleKeyPress]);
 
-  const firstThreshold: number = 150;
   const successiveThresholds: number = 50;
 
   const gestureHandlers = useSwipeable({
     onSwiping: (SwipeEventData) => {
       if (SwipeEventData.first) { moveThreshold = 0; }
       if (SwipeEventData.absX > moveThreshold || SwipeEventData.absY > moveThreshold) {
-        if (SwipeEventData.first) { moveThreshold = firstThreshold; }
+        if (SwipeEventData.first) { moveThreshold = Math.min(150, window.innerWidth * 0.25); }
         else { moveThreshold = moveThreshold + successiveThresholds; }
         switch (SwipeEventData.dir) {
-          case 'Left': if(actions["SwipeLeft"])actions["SwipeLeft"](); break;
-          case 'Right': if(actions["SwipeRight"])actions["SwipeRight"](); break;
-          case 'Up': if(actions["SwipeUp"])actions["SwipeUp"](); break;
-          case 'Down': if(actions["SwipeDown"])actions["SwipeDown"](); break;
+          case 'Left': actions["SwipeLeft"](); break;
+          case 'Right': actions["SwipeRight"](); break;
+          case 'Up': actions["SwipeUp"](); break;
+          case 'Down': actions["SwipeDown"](); break;
         }
       }
     },

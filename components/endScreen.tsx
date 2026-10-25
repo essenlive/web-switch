@@ -1,47 +1,65 @@
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { Share2, TextQuote, CircleArrowRight, PartyPopper, Trophy, Medal } from "lucide-react"
+import { Switch } from "@/components/ui/switch"
+import { Label } from "@/components/ui/label"
+import { Share2, TextQuote, CircleArrowRight, Clapperboard } from "lucide-react"
+import Link from "next/link"
+import { encodeMoves } from "@/lib/replay"
 import { useToast } from "@/hooks/use-toast"
 import { motion, AnimatePresence} from "motion/react"
 import { getMatrixString } from "@/lib/matrixHelpers"
-import { getInputListIcons, getInputListStringUrl } from "@/lib/inputs"
+import { type Direction } from "@/lib/switchMachine";
+import { useState } from "react"
+import { Leaderboard } from "@/components/leaderboard"
+import { useCommunity } from "@/hooks/useCommunity"
+import { friendLink } from "@/lib/links"
 
+function getInputListIcons(inputList: Direction[]):string{
+    const DIRECTION_ARROWS = new Map(Object.entries({
+        'up': "⬆️",
+        'right': "➡️",
+        'down': "⬇️",
+        'left': '⬅️',
+    }))
+    return inputList.map(input=>DIRECTION_ARROWS.get(input)).join(' ')
+
+}
 export function EndScreen({
     className,
     visible,
     score,
     inputsList,
-    highscore,
+    highscore: bestRank,
     highscoreInputs,
     url,
     restart,
     initialCanva,
+    lost = false,
+    area = 0,
     ...props
 }) {
-        
-    let host: string = "localhost:3000", protocol =""
-    if (typeof window !== 'undefined') { 
-        host = window.location.host;
-        protocol = window.location.protocol ?? ""
-    }
+    // The stored best is a rank: >= 1000 is a lost game, so there is no winning score to compare with
+    const highscore = bestRank !== null && bestRank < 1000 ? bestRank : null
     const { toast } = useToast()
-    const copyToClipboard = (options? : undefined | 'withCanva' | 'withInputs' | 'withInputsUrl') => {
+    const { friendCode } = useCommunity()
+    const [withFriendLink, setWithFriendLink] = useState(false)
+    const copyToClipboard = (options? : undefined | 'withCanva' | 'withInputs') => {
         let clipboardContent: string = ''
-        if(options === 'withCanva'){
-            clipboardContent = `🎊 I solved this switch grid in ${highscore !== null && highscore < score ? highscore : score} moves. \n${getMatrixString(initialCanva)}\nTry yourself !\n ${protocol}//${host}/g${url}`
+        if(lost){
+            clipboardContent = `🌱 This switch time challenge outgrew me after ${score} moves, down to ${area} tiles.\nTry yourself !\nhttps://switch.essenlive.xyz/g${url}`
+        }
+        else if(options === 'withCanva'){
+            clipboardContent = `🎊 I solved this switch grid in ${highscore !== null && highscore < score ? highscore : score} moves. \n${getMatrixString(initialCanva)}\nTry yourself !\nhttps://switch.essenlive.xyz/g${url}`
 
         }
         else if(options === 'withInputs'){
-            clipboardContent = `🎊 I solved this switch grid in ${highscore !== null && highscore < score ? highscore : score} moves. \nHere is my solution : ${highscore !== null && highscore < score ? getInputListIcons(highscoreInputs) : getInputListIcons(inputsList)}\nTry yourself !\n ${protocol}//${host}/g${url}`
-
-        }
-        else if(options === 'withInputsUrl'){
-            clipboardContent = `🎊 I solved this switch grid in ${highscore !== null && highscore < score ? highscore : score} moves. \n Check my solution : \n ${protocol}//${host}/replay${url}&i=${highscore !== null && highscore < score ? getInputListStringUrl(highscoreInputs) : getInputListStringUrl(inputsList)}`
+            clipboardContent = `🎊 I solved this switch grid in ${highscore !== null && highscore < score ? highscore : score} moves. \nHere is my solution : ${highscore !== null && highscore < score ? getInputListIcons(highscoreInputs) : getInputListIcons(inputsList)}\nTry yourself !\nhttps://switch.essenlive.xyz/g${url}`
 
         }
         else{
-            clipboardContent = `🎊 I solved this switch grid in ${highscore !== null && highscore < score ? highscore : score} moves.\nTry yourself !\nhttps//switch.essenlive.xyz/g${url}`
+            clipboardContent = `🎊 I solved this switch grid in ${highscore !== null && highscore < score ? highscore : score} moves.\nTry yourself !\nhttps://switch.essenlive.xyz/g${url}`
         }
+        if (withFriendLink && friendCode) clipboardContent += `\nAdd me : ${friendLink(friendCode)}`
         navigator.clipboard.writeText(clipboardContent)
 
         toast({
@@ -51,84 +69,59 @@ export function EndScreen({
     })}
 
 
+    const best = highscore === null ? score : Math.min(score, highscore)
+    const headline = lost ? `You got it down to ${area} tiles.` : highscore === null
+        ? "First score on the board."
+        : score < highscore ? `New best, ${highscore - score} fewer than before.`
+        : score === highscore ? "You matched your best."
+        : `Best is ${highscore}. ${score - highscore} to beat.`
+
     return (
         <AnimatePresence>
 
         { visible && (
         <motion.div 
             key="endScreen"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, position: "absolute" }}
-            transition={{ duration: 0.1, ease: "linear" }}
-            className={cn("flex-grow flex flex-col gap-4", className)} {...props}>
+            transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+            className={cn("flex flex-col gap-2", className)} {...props}>
 
-    
-            <div className={cn("flex-grow relative flex flex-col p-4 bg-slate-200 rounded-lg", className)}>
-                <div className="absolute z-10 top-4 right-4 flex gap-2 ">
-
-                <motion.div whileHover={{ scale: 1.1 }} onClick={()=> copyToClipboard()} className="">
-                    <Button className="text-xl" >
-                        <Share2 /> Share best
-                    </Button>
-                </motion.div>    
-                <motion.div whileHover={{ scale: 1.1 }} onClick={()=> copyToClipboard("withInputsUrl")} className="">
-                    <Button className="text-md" >
-                        <TextQuote/>
-                    </Button>
-                </motion.div>           
+            <div className="flex flex-col p-4 bg-background rounded-lg gap-3">
+                <div>
+                    <p className="text-sm text-muted-foreground">{lost ? "outgrown after" : "solved in"}</p>
+                    <p className="text-6xl font-extrabold leading-none tracking-tight">
+                        {score} <span className="text-2xl font-bold text-muted-foreground">moves</span>
+                    </p>
                 </div>
-            {highscore === null ? (
-                <>
-                    <div className="py-4">
-                        <Medal size={32} />
+                <p className="text-xl">{headline}</p>
+                <div className="flex gap-2">
+                    <Button className="text-base grow" onClick={() => copyToClipboard()}>
+                        <Share2 /> Share {best === score ? "result" : "best"}
+                    </Button>
+                    <Button variant="secondary" aria-label="Share with my moves" title="Share with my moves" onClick={() => copyToClipboard("withInputs")}>
+                        <TextQuote />
+                    </Button>
+                    <Button variant="secondary" size="icon" aria-label="Watch the replay" title="Watch the replay" asChild>
+                        <Link href={`/replay${url}&i=${encodeMoves(inputsList)}`}><Clapperboard /></Link>
+                    </Button>
+                </div>
+                {friendCode && (
+                    <div className="flex items-center justify-between gap-3 rounded-md bg-muted p-3">
+                        <Label htmlFor="friend-link" className="grow cursor-pointer text-base">Add my friend link when sharing</Label>
+                        <Switch id="friend-link" checked={withFriendLink} onCheckedChange={setWithFriendLink} />
                     </div>
-                    <h2 className="text-2xl font-bold ">
-                        Easy first !
-                    </h2>
-                    <p className="flex-grow text-xl my-4">
-                        You solved the grid in <span className="font-bold">{score}</span> moves, that makes it the first score to beat.
-                    </p>
-                </>
-        ) : (<>
+                )}
+            </div>
 
-            {score <= highscore ? (
-                <>
-                    <div className="py-4">
-                        <Trophy size={32} />
-                    </div>
-                    <h2 className="text-2xl font-bold ">
-                        New highscore !
-                    </h2>
-                    <p className="flex-grow text-xl my-4">
-                                You solved the grid in <span className="font-bold">{score}</span> moves. It is <span className="font-bold">{Math.abs(score - highscore)}</span> moves less than the previous best.
-                    </p>
-                </>
-            ) : (
-                <>
-                    <div className="py-4">
-                        <PartyPopper size={32} />
-                    </div>
-                    <h2 className="text-2xl font-bold ">
-                        Good Job !
-                    </h2>
-                    <p className="flex-grow text-xl my-4">
-                        You solved the grid in <span className="font-bold">{score}</span> moves. Now try to beat the highscore of <span className="font-bold">{highscore}</span> moves.
-                    </p>
-            </>
-        )}
+            <Leaderboard url={url} />
 
-        </>)}
-        </div>
-
-            <motion.div whileHover={{ scale: 1.05 }} onClick={restart} className="flex justify-between items-center p-4 bg-slate-200 rounded-lg cursor-pointer">
-            <span className="font-bold text-xl">
+            <Button className="h-14 justify-between text-xl font-bold" onClick={restart}>
                 Play again
-            </span>
-            <CircleArrowRight />
-        </motion.div>
-    </motion.div>)}
-    </AnimatePresence>
-
+                <CircleArrowRight />
+            </Button>
+        </motion.div>)}
+        </AnimatePresence>
     )
 }

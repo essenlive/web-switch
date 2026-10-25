@@ -2,6 +2,7 @@ import { cn } from "@/lib/utils"
 import { Move, BookText, MessageCircleQuestion, SquareArrowOutUpRight, CircleX } from "lucide-react"
 import Link from "next/link"
 import { motion, AnimatePresence } from "motion/react"
+import { useEffect, useRef } from "react"
 
 export function HelpScreen({
     className,
@@ -15,109 +16,92 @@ export function HelpScreen({
     closeHelp: () => void
  }) {
     
+    const closeRef = useRef<HTMLButtonElement>(null)
+    const dialogRef = useRef<HTMLDivElement>(null)
+
+    useEffect(() => {
+        if (!visible) return
+        const opener = document.activeElement as HTMLElement | null
+        closeRef.current?.focus()
+        const overflow = document.body.style.overflow
+        document.body.style.overflow = "hidden"
+        const onKey = (e: KeyboardEvent) => {
+            if (e.key === "Escape") return closeHelp()
+            if (e.key !== "Tab") return
+            // keep Tab inside the dialog
+            const items = dialogRef.current?.querySelectorAll<HTMLElement>("a[href], button")
+            if (!items?.length) return
+            const first = items[0], last = items[items.length - 1]
+            const active = document.activeElement
+            if (!dialogRef.current?.contains(active)) { e.preventDefault(); first.focus() }
+            else if (e.shiftKey && active === first) { e.preventDefault(); last.focus() }
+            else if (!e.shiftKey && active === last) { e.preventDefault(); first.focus() }
+        }
+        window.addEventListener("keydown", onKey)
+        return () => { window.removeEventListener("keydown", onKey); document.body.style.overflow = overflow; opener?.focus() }
+    }, [visible, closeHelp])
+
     return (
 <AnimatePresence>
   {visible && (
-            <motion.div 
+            <motion.div
                     key="helpScreen"
+                    ref={dialogRef}
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label="About, rules and controls"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    transition={{ duration: 0.3, ease: "linear" }}
-            className={cn("absolute z-10 top-0 left-0 !my-0 h-full w-full space-y-4 bg-gray-100", className)} {...props}>   
-            <div className={"p-4 flex flex-col items-stretch justify-stretch min-h-dvh max-w-xl mx-auto space-y-4"}>   
-                <div className="flex-grow flex flex-col p-8 bg-slate-200 rounded-lg">
-                    <div className="py-4">
-                        <MessageCircleQuestion size={32} />
-                    </div>
-                <h2 className="text-xl font-bold my-4">
-                    About
-                </h2>
-                <p className="text-xl mt-2">
-                    This mini game is inspired from memory of the game Russpack that I used to play on the Archos Gmini400 media player. All the credits goes to the original creator of the game.
-                            </p>
-                            <p className="text-xl mt-2">
-                                I rebuilt it because I could not find a playable instance.
-                            </p>
-                            <p className="text-xl mt-2">
-                                Minimalist usage tracking is done with <Link className="underline" href="https://umami.is/" target="_blank" rel="noopener noreferrer">Umami</Link>.
-                            </p>
+                    transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+            className={cn("fixed inset-0 z-10 overflow-y-auto bg-gray-100 dark:bg-gray-900", className)} {...props}>
+            <div className="p-4 flex flex-col max-w-xl mx-auto gap-2 min-h-dvh">
+                <div className="sticky top-0 z-10 flex items-center justify-between gap-2 p-3 bg-background rounded-lg">
+                    <span className="text-xl font-bold pl-1">How to play</span>
+                    <motion.button ref={closeRef} type="button" aria-label="Close" whileTap={{ scale: 0.95 }} onClick={closeHelp} className="flex justify-center items-center p-1 cursor-pointer rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                        <CircleX size={32} />
+                    </motion.button>
                 </div>
-                <div className="flex-grow flex flex-col p-8 bg-slate-200 rounded-lg">
-                    <div className="py-4">
-
-                        <BookText size={32} />
+                <section className="flex flex-col gap-2 p-4 bg-background rounded-lg">
+                    <div className="flex items-center gap-3">
+                        <BookText size={28} />
+                        <h2 className="text-xl font-bold">Rules</h2>
                     </div>
-                    <h2 className="text-xl font-bold my-4">
-                        Rules
-                    </h2>
-                    <p className="text-xl mt-2">
-                        Move your cursor to switch the lines, try to align the same colors on the same column or line to make it disappear.
-                    </p>
-                    <p className="text-xl mt-2">
-                        Once you the grid is only one square wide in any direction, you have won !
-                    </p>
-                    <p className="text-xl mt-2">
-                        Try to make the best score by solving the grid in the least amount of moves.
-                    </p>
-                </div>
-                <div className="flex-grow flex flex-col p-8 bg-slate-200 rounded-lg">
-                    <div className="py-4">
-
-                        <Move size={32} />
+                    <p className="text-base">Move your cursor to switch the lines. Line up the same shapes in a row or column to make them disappear.</p>
+                    <p className="text-base">When the grid is only one square wide in any direction, you have won.</p>
+                    <p className="text-base">Solve the grid in as few moves as you can.</p>
+                </section>
+                <section className="flex flex-col gap-2 p-4 bg-background rounded-lg">
+                    <div className="flex items-center gap-3">
+                        <Move size={28} />
+                        <h2 className="text-xl font-bold">Controls</h2>
                     </div>
-                    <h2 className="text-xl font-bold my-4">
-                        Controls
-                    </h2>
-                    <p className="text-xl mt-2">
-                        Either swipe or use the arrows to move the cursor in the right direction.
-                    </p>
-                    <p className="opacity-30 text-xl mt-2">
-                        Use shift or long swipe to go faster.
-                    </p>
-                    <p className="text-xl mt-2">
-                        Press space or restart button to restart the game.
-                    </p>
-                </div>
-                <div className="flex-grow flex flex-col p-8 bg-slate-200 rounded-lg">
-                    <div className="py-4">
-
-                        <Move size={32} />
+                    <p className="text-base">Swipe, or use the arrow keys, to move the cursor.</p>
+                    <p className="text-base">A long swipe goes faster.</p>
+                    <p className="text-base">Press space or the restart button to start over.</p>
+                </section>
+                <section className="flex flex-col gap-2 p-4 bg-background rounded-lg">
+                    <div className="flex items-center gap-3">
+                        <MessageCircleQuestion size={28} />
+                        <h2 className="text-xl font-bold">About</h2>
                     </div>
-                    <h2 className="text-xl font-bold my-4">
-                        Controls
-                    </h2>
-                    <p className="text-xl mt-2">
-                        Either swipe or use the arrows to move the cursor in the right direction.
-                    </p>
-                    <p className="text-xl mt-2">
-                        Use a long swipe to go faster.
-                    </p>
-                    <p className="text-xl mt-2">
-                        Press space or restart button to restart the game.
-                    </p>
-                </div>
-                <div className="flex-grow flex flex-col p-8 bg-slate-200 rounded-lg">
-                    <div className="py-4">
-
-                        <SquareArrowOutUpRight size={32} />
+                    <p className="text-base">This mini game is inspired by Russpack, a game I used to play on the Archos Gmini400 media player. All credit goes to its original creator.</p>
+                    <p className="text-base">I rebuilt it because I could not find a playable copy.</p>
+                    <p className="text-base">Minimal usage tracking is done with <Link className="underline" href="https://umami.is/" target="_blank" rel="noopener noreferrer">Umami</Link>.</p>
+                </section>
+                <section className="flex flex-col gap-2 p-4 bg-background rounded-lg">
+                    <div className="flex items-center gap-3">
+                        <SquareArrowOutUpRight size={28} />
+                        <h2 className="text-xl font-bold">Credits</h2>
                     </div>
-                    <h2 className="text-xl font-bold my-4">
-                        Credits
-                    </h2>
-                    <ol className="text-xl mt-2">
-                                <li>Icons are from <Link className="underline" href="https://lucide.dev/" target="_blank" rel="noopener noreferrer">Lucide.dev</Link>.</li>
-                                <li>The app is built with <Link className="underline" href="https://nextjs.org/" target="_blank" rel="noopener noreferrer">Next.js</Link>.</li>
-                                <li>The app is hosted on <Link className="underline" href="https://vercel.com" target="_blank" rel="noopener noreferrer">Vercel</Link>.</li>
-                                <li><Link className="underline" href="https://ui.shadcn.com" target="_blank" rel="noopener noreferrer">Shadcn</Link> is used for the UI.</li>
-                        <li><Link className="underline" href="https://stately.ai" target="_blank" rel="noopener noreferrer">xstate</Link>.</li>
-                    </ol>
-                </div>
+                    <ul className="text-base list-disc pl-5">
+                        <li>Icons from <Link className="underline" href="https://lucide.dev/" target="_blank" rel="noopener noreferrer">Lucide</Link>.</li>
+                        <li>Built with <Link className="underline" href="https://nextjs.org/" target="_blank" rel="noopener noreferrer">Next.js</Link> and <Link className="underline" href="https://stately.ai" target="_blank" rel="noopener noreferrer">xstate</Link>.</li>
+                        <li>UI from <Link className="underline" href="https://ui.shadcn.com" target="_blank" rel="noopener noreferrer">Shadcn</Link>.</li>
+                        <li>Hosted on <Link className="underline" href="https://vercel.com" target="_blank" rel="noopener noreferrer">Vercel</Link>.</li>
+                    </ul>
+                </section>
             </div>
-    
-                <motion.div whileHover={{ scale: 1.1 }} onClick={closeHelp}  className="fixed z-10 p-4 top-0 right-4 cursor-pointer">
-                    <CircleX size={32} />
-                </motion.div>
         </motion.div>)}
         </AnimatePresence>
     )

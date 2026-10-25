@@ -1,0 +1,163 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-25T16:04:27.813804Z",
+  "title": "Design System: switch",
+  "extensions": {
+    "colorMeta": {
+      "page-light": {
+        "role": "neutral",
+        "displayName": "Pale Slate Page",
+        "canonical": "#f3f4f6"
+      },
+      "page-dark": {
+        "role": "neutral",
+        "displayName": "Midnight Slate Page",
+        "canonical": "#101828"
+      },
+      "tray-light": {
+        "role": "neutral",
+        "displayName": "White Tray",
+        "canonical": "#ffffff"
+      },
+      "tray-dark": {
+        "role": "neutral",
+        "displayName": "Near-Black Tray",
+        "canonical": "#0a0a0a"
+      },
+      "ink-light": {
+        "role": "primary",
+        "displayName": "Ink",
+        "canonical": "#0a0a0a"
+      },
+      "tile-red": {
+        "role": "tertiary",
+        "displayName": "Tile Red",
+        "canonical": "#ef4444"
+      },
+      "tile-blue": {
+        "role": "tertiary",
+        "displayName": "Tile Blue",
+        "canonical": "#3b82f6"
+      },
+      "tile-green": {
+        "role": "tertiary",
+        "displayName": "Tile Green",
+        "canonical": "#22c55e"
+      },
+      "tile-yellow": {
+        "role": "tertiary",
+        "displayName": "Tile Yellow",
+        "canonical": "#eab308"
+      }
+    },
+    "typographyMeta": {
+      "title": {
+        "displayName": "Title",
+        "purpose": "Wordmark and section titles."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Help and result copy."
+      }
+    },
+    "shadows": [
+      {
+        "name": "button-sm",
+        "value": "0 1px 2px 0 rgb(0 0 0 / 0.05)",
+        "purpose": "Only shadow in the system, on shadcn buttons."
+      }
+    ],
+    "motion": [
+      {
+        "name": "tile-fade",
+        "value": "0.2s",
+        "purpose": "Opacity fade for rows, columns, and tiles."
+      },
+      {
+        "name": "hover-scale",
+        "value": "scale(1.05)",
+        "purpose": "Hover on trays and tiles (1.1 on icon trays)."
+      }
+    ],
+    "breakpoints": []
+  },
+  "components": [
+    {
+      "name": "Icon Tray",
+      "kind": "custom",
+      "refersTo": "icon-tray-button",
+      "description": "Square header tray holding one icon.",
+      "html": "<div class=\"ds-icon-tray\"><svg width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M6 9H4.5a2.5 2.5 0 0 1 0-5H6\"/><path d=\"M18 9h1.5a2.5 2.5 0 0 0 0-5H18\"/><path d=\"M4 22h16\"/><path d=\"M18 2H6v7a6 6 0 0 0 12 0V2Z\"/></svg></div>",
+      "css": ".ds-icon-tray{display:flex;align-items:center;justify-content:center;padding:12px;aspect-ratio:1;background:#fff;color:#0a0a0a;border-radius:8px;cursor:pointer;transition:transform .2s}.ds-icon-tray:hover{transform:scale(1.1)}"
+    },
+    {
+      "name": "Score Tray",
+      "kind": "card",
+      "refersTo": "tray",
+      "description": "Tray with an icon and a bold number.",
+      "html": "<div class=\"ds-score\"><span class=\"ds-score-n\">42</span></div>",
+      "css": ".ds-score{display:flex;align-items:center;padding:12px;background:#fff;color:#0a0a0a;border-radius:8px}.ds-score-n{font-size:1.25rem;font-weight:700;line-height:1.75rem}"
+    },
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Default shadcn button.",
+      "html": "<button class=\"ds-btn\">Share</button>",
+      "css": ".ds-btn{height:36px;padding:8px 16px;background:#0a0a0a;color:#fafafa;border:none;border-radius:6px;font-size:.875rem;font-weight:500;box-shadow:0 1px 2px 0 rgb(0 0 0/.05);cursor:pointer;transition:background-color .15s}.ds-btn:hover{background:rgb(10 10 10/.9)}.ds-btn:focus-visible{outline:none;box-shadow:0 0 0 1px #0a0a0a}"
+    },
+    {
+      "name": "Tile Set",
+      "kind": "custom",
+      "refersTo": "tile",
+      "description": "The four tile colors on a page-colored hole.",
+      "html": "<div class=\"ds-tiles\"><i style=\"background:#ef4444\"></i><i style=\"background:#3b82f6\"></i><i style=\"background:#22c55e\"></i><i style=\"background:#eab308\"></i><i style=\"background:#f3f4f6\"></i></div>",
+      "css": ".ds-tiles{display:flex;gap:8px}.ds-tiles i{display:block;width:24px;height:24px;border-radius:4px;transition:transform .2s}.ds-tiles i:hover{transform:scale(1.05)}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Pocket Puzzle",
+    "overview": "A small handheld-era toy. The page is a quiet gray surface; every piece of interface chrome sits on a plain white (near-black in dark) rounded tray; color is reserved for the four tile hues where the game actually lives.",
+    "keyCharacteristics": [
+      "One neutral surface, one tray color, four tile colors.",
+      "Icon plus number beats labels; trays hold one idea each.",
+      "Light and dark are full peers, switched by the system theme.",
+      "Motion is brief and functional (0.2s fades, small hover scale)."
+    ],
+    "rules": [
+      {
+        "name": "The Color Lives In The Grid Rule",
+        "body": "Saturated color appears only on tiles. Chrome stays neutral.",
+        "section": "colors"
+      },
+      {
+        "name": "The Shape Backs The Hue Rule",
+        "body": "Tiles must stay distinguishable without color alone; new tile work should add a shape or glyph cue.",
+        "section": "colors"
+      },
+      {
+        "name": "The Weight Not Size Rule",
+        "body": "Scores and headings are bold; do not add intermediate sizes.",
+        "section": "typography"
+      },
+      {
+        "name": "The Tonal Tray Rule",
+        "body": "Separation is a surface step, never a drop shadow.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do put every control on a white / near-black 8px tray over the gray page.",
+      "Do keep color to the four tile hues.",
+      "Do keep light and dark in parity.",
+      "Do favor an icon plus a number over a text label.",
+      "Do keep motion at 0.2s fades and small hover scale, and respect reduced motion."
+    ],
+    "donts": [
+      "Don't add drop shadows or glows for depth.",
+      "Don't introduce a chrome accent color.",
+      "Don't rely on hue alone to tell tiles apart in new work.",
+      "Don't widen the column past max-w-xl."
+    ]
+  }
+}
