@@ -24,7 +24,7 @@ export function Header({
         const active = pathname === href
         return (
             <Link href={href} aria-label={label} title={label} aria-current={active ? "page" : undefined} className={cn("shrink-0", ring)}>
-                <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.95 }} className={cn(tray, active ? "bg-primary text-primary-foreground" : "bg-background text-foreground")}>
+                <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.95 }} className={cn(tray, active ? "bg-foreground text-background" : "bg-background text-foreground")}>
                     <Icon size={24} />
                 </motion.div>
             </Link>

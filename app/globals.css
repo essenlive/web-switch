@@ -160,6 +160,7 @@ body {
     --background: 0 0% 100%;
     --foreground: 200 94% 21%;
     --muted-foreground: 200 30% 35%;
+    --ring: 200 94% 21%;
     --page: #d6d9dc;
     --tile-1: #e04612;
     --tile-2: #034669;
@@ -169,13 +170,6 @@ body {
     --tile-ink-2: #ffffff;
     --tile-ink-3: #04210e;
     --tile-ink-4: #1e2a33;
-    --primary: 201 94% 21%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 140 30% 65%;
-    --secondary-foreground: var(--foreground);
-    --accent: 14 52% 70%;
-    --accent-foreground: var(--foreground);
-    --ring: 201 94% 21%;
   }
   .lecap {
     --page: #f4f1e8;
@@ -187,13 +181,6 @@ body {
     --tile-ink-2: #062a33;
     --tile-ink-3: #1c2a0a;
     --tile-ink-4: #33240a;
-    --primary: 332 69% 69%;
-    --primary-foreground: 332 49% 15%;
-    --secondary: 77 46% 77%;
-    --secondary-foreground: var(--foreground);
-    --accent: 340 57% 85%;
-    --accent-foreground: var(--foreground);
-    --ring: 332 69% 69%;
   }
   .copenhague {
     --page: #eef3f8;
@@ -205,13 +192,6 @@ body {
     --tile-ink-2: #ffffff;
     --tile-ink-3: #0b2425;
     --tile-ink-4: #3a2c0a;
-    --primary: 210 58% 40%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 189 26% 76%;
-    --secondary-foreground: var(--foreground);
-    --accent: 354 53% 85%;
-    --accent-foreground: var(--foreground);
-    --ring: 210 58% 40%;
   }
 
   /* Palettes from the colour book: Faro (Portugal), La Havane (Cuba), Darjeeling (India) */
@@ -225,13 +205,6 @@ body {
     --tile-ink-2: #ffffff;
     --tile-ink-3: #1f2428;
     --tile-ink-4: #1f2428;
-    --primary: 156 4% 24%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 67 50% 71%;
-    --secondary-foreground: var(--foreground);
-    --accent: 33 84% 76%;
-    --accent-foreground: var(--foreground);
-    --ring: 156 4% 24%;
   }
   .havane {
     --page: #fdf8cc;
@@ -243,13 +216,6 @@ body {
     --tile-ink-2: #1f2428;
     --tile-ink-3: #1f2428;
     --tile-ink-4: #1f2428;
-    --primary: 200 72% 49%;
-    --primary-foreground: 207 13% 14%;
-    --secondary: 92 43% 82%;
-    --secondary-foreground: var(--foreground);
-    --accent: 9 50% 84%;
-    --accent-foreground: var(--foreground);
-    --ring: 200 72% 49%;
   }
   .darjeeling {
     --page: #e6e2de;
@@ -261,13 +227,6 @@ body {
     --tile-ink-2: #1f2428;
     --tile-ink-3: #1f2428;
     --tile-ink-4: #1f2428;
-    --primary: 12 77% 53%;
-    --primary-foreground: 207 13% 14%;
-    --secondary: 72 45% 70%;
-    --secondary-foreground: var(--foreground);
-    --accent: 13 60% 74%;
-    --accent-foreground: var(--foreground);
-    --ring: 12 77% 53%;
   }
 }
 
