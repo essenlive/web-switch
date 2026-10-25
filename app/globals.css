@@ -5,6 +5,18 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme {
+  /* Page surface and the five tile values come from the active theme (see "Themes" below) */
+  --color-page: var(--page);
+  --color-tile-0: var(--tile-0);
+  --color-tile-1: var(--tile-1);
+  --color-tile-2: var(--tile-2);
+  --color-tile-3: var(--tile-3);
+  --color-tile-4: var(--tile-4);
+  --color-tile-ink-1: var(--tile-ink-1);
+  --color-tile-ink-2: var(--tile-ink-2);
+  --color-tile-ink-3: var(--tile-ink-3);
+  --color-tile-ink-4: var(--tile-ink-4);
+
   --color-background: hsl(var(--background));
   --color-foreground: hsl(var(--foreground));
 
@@ -17,13 +29,13 @@
   --color-primary: hsl(var(--primary));
   --color-primary-foreground: hsl(var(--primary-foreground));
 
-  --color-secondary: hsl(var(--secondary));
+  --color-secondary: color-mix(in oklab, hsl(var(--primary)) 12%, hsl(var(--background)));
   --color-secondary-foreground: hsl(var(--secondary-foreground));
 
   --color-muted: hsl(var(--muted));
   --color-muted-foreground: hsl(var(--muted-foreground));
 
-  --color-accent: hsl(var(--accent));
+  --color-accent: color-mix(in oklab, hsl(var(--primary)) 12%, hsl(var(--background)));
   --color-accent-foreground: hsl(var(--accent-foreground));
 
   --color-destructive: hsl(var(--destructive));
@@ -31,7 +43,7 @@
 
   --color-border: hsl(var(--border));
   --color-input: hsl(var(--input));
-  --color-ring: hsl(var(--ring));
+  --color-ring: hsl(var(--primary));
 
   --color-chart-1: hsl(var(--chart-1));
   --color-chart-2: hsl(var(--chart-2));
@@ -75,10 +87,10 @@ body {
     --card-foreground: 0 0% 3.9%;
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 3.9%;
-    --primary: 0 0% 9%;
+    --primary: 215 14% 32%;
     --primary-foreground: 0 0% 98%;
     --secondary: 0 0% 96.1%;
-    --secondary-foreground: 0 0% 9%;
+    --secondary-foreground: 0 0% 3.9%;
     --muted: 0 0% 96.1%;
     --muted-foreground: 0 0% 45.1%;
     --accent: 0 0% 96.1%;
@@ -94,6 +106,17 @@ body {
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
     --radius: 0.5rem;
+
+    --page: #f3f4f6;
+    --tile-0: var(--page);
+    --tile-1: #ef4444;
+    --tile-2: #3b82f6;
+    --tile-3: #22c55e;
+    --tile-4: #eab308;
+    --tile-ink-1: #ffffff;
+    --tile-ink-2: #ffffff;
+    --tile-ink-3: #052e16;
+    --tile-ink-4: #111827;
   }
   .dark {
     --background: 0 0% 3.9%;
@@ -102,8 +125,8 @@ body {
     --card-foreground: 0 0% 98%;
     --popover: 0 0% 3.9%;
     --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 0 0% 9%;
+    --primary: 215 16% 78%;
+    --primary-foreground: 215 20% 12%;
     --secondary: 0 0% 14.9%;
     --secondary-foreground: 0 0% 98%;
     --muted: 0 0% 14.9%;
@@ -120,7 +143,107 @@ body {
     --chart-3: 30 80% 55%;
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
+
+    --page: #101828;
+    --tile-1: #dc2626;
+    --tile-2: #2563eb;
+    --tile-3: #16a34a;
+    --tile-4: #ca8a04;
+    --tile-ink-4: #111827;
   }
+
+  /*
+    Themes: a theme is a class on <html> that overrides the page, tray and tile tokens.
+    Palette themes are light-based; the tile order stays circle, square, triangle, diamond.
+  */
+  .ittoqqortoormiit {
+    --primary: 200 94% 21%;
+    --primary-foreground: 0 0% 98%;
+    --background: 0 0% 100%;
+    --foreground: 200 94% 21%;
+    --muted-foreground: 200 30% 35%;
+    --ring: 200 94% 21%;
+    --page: #d6d9dc;
+    --tile-1: #e04612;
+    --tile-2: #034669;
+    --tile-3: #159a3a;
+    --tile-4: #e5ca64;
+    --tile-ink-1: #ffffff;
+    --tile-ink-2: #ffffff;
+    --tile-ink-3: #04210e;
+    --tile-ink-4: #1e2a33;
+  }
+  .lecap {
+    --primary: 192 78% 29%;
+    --primary-foreground: 0 0% 98%;
+    --page: #f4f1e8;
+    --tile-1: #e679ab;
+    --tile-2: #33bcdc;
+    --tile-3: #9cc650;
+    --tile-4: #ecb53f;
+    --tile-ink-1: #3a1426;
+    --tile-ink-2: #062a33;
+    --tile-ink-3: #1c2a0a;
+    --tile-ink-4: #33240a;
+  }
+  .copenhague {
+    --primary: 208 59% 40%;
+    --primary-foreground: 0 0% 98%;
+    --page: #eef3f8;
+    --tile-1: #ec7d80;
+    --tile-2: #2b67a2;
+    --tile-3: #599598;
+    --tile-4: #f5d794;
+    --tile-ink-1: #3a1214;
+    --tile-ink-2: #ffffff;
+    --tile-ink-3: #0b2425;
+    --tile-ink-4: #3a2c0a;
+  }
+
+  /* Palettes from the colour book: Faro (Portugal), La Havane (Cuba), Darjeeling (India) */
+  .faro {
+    --primary: 150 5% 24%;
+    --primary-foreground: 0 0% 98%;
+    --page: #f7ebdc;
+    --tile-1: #f39118;
+    --tile-2: #3a3f3d;
+    --tile-3: #98c11e;
+    --tile-4: #a2d6da;
+    --tile-ink-1: #1f2428;
+    --tile-ink-2: #ffffff;
+    --tile-ink-3: #1f2428;
+    --tile-ink-4: #1f2428;
+  }
+  .havane {
+    --primary: 201 75% 31%;
+    --primary-foreground: 0 0% 98%;
+    --page: #fdf8cc;
+    --tile-1: #cf82b6;
+    --tile-2: #239ad7;
+    --tile-3: #8cc9aa;
+    --tile-4: #f9b459;
+    --tile-ink-1: #1f2428;
+    --tile-ink-2: #1f2428;
+    --tile-ink-3: #1f2428;
+    --tile-ink-4: #1f2428;
+  }
+  .darjeeling {
+    --primary: 11 75% 40%;
+    --primary-foreground: 0 0% 98%;
+    --page: #e6e2de;
+    --tile-1: #e34e29;
+    --tile-2: #6ca6db;
+    --tile-3: #98c11e;
+    --tile-4: #ec7d80;
+    --tile-ink-1: #1f2428;
+    --tile-ink-2: #1f2428;
+    --tile-ink-3: #1f2428;
+    --tile-ink-4: #1f2428;
+  }
+}
+
+body {
+  background-color: var(--page);
 }
 
 @layer base {

@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { nip19 } from 'nostr-tools';
-import { getMyPubkey, publishScore } from '@/lib/nostr';
+import { getMyPubkey, listMyScoreUrls, publishScore, resetKey, unpublishScore } from '@/lib/nostr';
+import { loadHighscores, removeHighscore as removeLocalHighscore, wipeProfile, type Highscore } from '@/lib/profile';
 import { loadSettings, saveSettings, NICKNAME_RE, type CommunitySettings } from '@/lib/communityStorage';
 import { parseFriendCode } from '@/lib/links';
 import type { Direction } from '@/lib/switchMachine';
@@ -10,9 +11,10 @@ import type { Direction } from '@/lib/switchMachine';
 export function useCommunity() {
   const [settings, setSettings] = useState<CommunitySettings>({ nickname: null, following: [] });
   const [myPubkey, setMyPubkey] = useState<string | null>(null);
+  const [highscores, setHighscores] = useState<Highscore[]>([]);
 
   // Dans un effet : jamais au rendu (hydratation SSR)
-  useEffect(() => { setSettings(loadSettings()); setMyPubkey(getMyPubkey()); }, []);
+  useEffect(() => { setSettings(loadSettings()); setMyPubkey(getMyPubkey()); setHighscores(loadHighscores()); }, []);
 
   const update = (s: CommunitySettings) => { setSettings(s); saveSettings(s); };
 
@@ -47,5 +49,22 @@ export function useCommunity() {
     return null;
   };
 
-  return { nickname: settings.nickname, following: settings.following, myPubkey, friendCode, addFollowing, removeFollowing, saveNickname };
+  // A personal best lives in two places, this device and the community: removing it clears both
+  const removeHighscore = (url: string) => {
+    removeLocalHighscore(url);
+    unpublishScore(url);
+    setHighscores(loadHighscores());
+  };
+
+  // Wipes the nickname, friends and highscores here, and every score this identity published. Ends with a new key.
+  const deleteProfile = async () => {
+    const urls = new Set([...highscores.map(h => h.url), ...(await listMyScoreUrls())]);
+    urls.forEach(unpublishScore);
+    wipeProfile();
+    setMyPubkey(resetKey());
+    setSettings({ nickname: null, following: [] });
+    setHighscores([]);
+  };
+
+  return { nickname: settings.nickname, following: settings.following, myPubkey, friendCode, highscores, addFollowing, removeFollowing, saveNickname, removeHighscore, deleteProfile };
 }

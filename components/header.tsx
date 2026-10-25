@@ -7,7 +7,7 @@ import { usePathname } from "next/navigation";
 import { HelpScreen } from "@/components/helpScreen";
 import React, { useState } from "react";
 import { motion, MotionConfig } from "motion/react"
-import { ModeToggle } from "@/components/mode-toggle";
+import { ThemePicker } from "@/components/theme-picker";
 
 const tray = "flex justify-center items-center p-3 aspect-square shrink-0 rounded-lg"
 const ring = "rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -41,7 +41,7 @@ export function Header({
                 </Link>
                 <nav aria-label="Main" className="contents">
                     {navLink("/leaderboard", "Leaderboard", Medal)}
-                    {navLink("/community", "Community", Users)}
+                    {navLink("/community", "Profile and community", Users)}
                 </nav>
                 <motion.button
                     type="button"
@@ -53,7 +53,7 @@ export function Header({
                     className={cn(tray, "cursor-pointer bg-background text-foreground", ring)}>
                     <Info size={24} />
                 </motion.button>
-                <ModeToggle />
+                <ThemePicker />
             </header>
             <HelpScreen visible={showHelp} closeHelp={() => setShowHelp(false)} />
         </MotionConfig>

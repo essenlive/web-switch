@@ -8,7 +8,7 @@ import { EndScreen } from "@/components/endScreen";
 import { Score } from "@/components/score";
 import { Grid } from "@/components/grid";
 import { useSearchParams, useParams, useRouter } from 'next/navigation'
-import { matrixFromParams, GROW_MS } from "@/lib/matrixHelpers"
+import { matrixFromParams, growMs } from "@/lib/matrixHelpers"
 import { useToast } from "@/hooks/use-toast";
 import { useControls } from '@/hooks/use-controls';
 import { useLocalStorage } from "@/hooks/use-local-storage";
@@ -173,7 +173,7 @@ const [localHighscoresInputs, setLocalHighscoresInputs] = useLocalStorage<object
           restart={restart}
           score={snapshot.context.score}
           highscore={highscoreLabel}
-          growIn={timer ? Math.ceil((GROW_MS - (elapsed % GROW_MS)) / 1000) : null}
+          growIn={timer ? Math.ceil(Math.max(0, growMs(snapshot.context.initialCanva) - (elapsed - snapshot.context.clockBase)) / 1000) : null}
         />
       </div>
       <div className="bg-background rounded-lg px-4">

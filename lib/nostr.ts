@@ -2,10 +2,11 @@ import { SimplePool } from 'nostr-tools/pool';
 import { finalizeEvent, generateSecretKey, getPublicKey, type Event } from 'nostr-tools/pure';
 import { bytesToHex, hexToBytes } from 'nostr-tools/utils';
 import { nip19 } from 'nostr-tools';
-import { APP, SCORE_KIND, dTag, scoreFromEvent, type CommunityScore, type ScorePayload } from '@/lib/scoreEvent';
+import { APP, SCORE_KIND, TOMBSTONE, dTag, removalFromEvent, scoreFromEvent, type CommunityScore, type ScorePayload } from '@/lib/scoreEvent';
+import { STORAGE_KEYS } from '@/lib/profile';
 
 export const RELAYS = ['wss://relay.damus.io', 'wss://nos.lol', 'wss://relay.primal.net'];
-const KEY = `${APP}-key`;
+const KEY = STORAGE_KEYS.key;
 let pool: SimplePool | null = null;
 const getPool = () => (pool ??= new SimplePool());
 
@@ -37,12 +38,49 @@ export function publishScore(url: string, payload: Omit<ScorePayload, 'v'>): voi
   getPool().publish(RELAYS, event).forEach(p => p.catch(() => {})); // best effort, un relais suffit
 }
 
-export function subscribeScores(url: string, authors: string[] | null, onScore: (s: CommunityScore) => void) {
+// Removes a score: overwrites it with a tombstone (what relays reliably honour), then asks for a NIP-09 deletion too.
+export function unpublishScore(url: string): void {
+  const sk = getSecretKey();
+  if (!sk) return;
+  const now = Math.floor(Date.now() / 1000);
+  const d = dTag(url);
+  const events = [
+    finalizeEvent({ kind: SCORE_KIND, created_at: now, tags: [['d', d], ['t', APP]], content: JSON.stringify(TOMBSTONE) }, sk),
+    finalizeEvent({ kind: 5, created_at: now, tags: [['a', `${SCORE_KIND}:${getPublicKey(sk)}:${d}`], ['k', String(SCORE_KIND)]], content: '' }, sk),
+  ];
+  events.forEach(e => getPool().publish(RELAYS, e).forEach(p => p.catch(() => {})));
+}
+
+// Grid urls of every score this identity still has on the relays, also the ones this device never played
+export async function listMyScoreUrls(): Promise<string[]> {
+  const pk = getMyPubkey();
+  if (!pk) return [];
+  try {
+    const events = await getPool().querySync(RELAYS, { kinds: [SCORE_KIND], authors: [pk], '#t': [APP], limit: 500 }, { maxWait: 3000 });
+    const live = new Map<string, Event>(); // newest event per grid
+    for (const e of events) {
+      const d = e.tags.find(t => t[0] === 'd' && t[1]?.startsWith(`${APP}:`))?.[1];
+      if (d && (!live.has(d) || live.get(d)!.created_at < e.created_at)) live.set(d, e);
+    }
+    return [...live].filter(([d, e]) => removalFromEvent(e, d.slice(APP.length + 1)) === null).map(([d]) => d.slice(APP.length + 1));
+  } catch { return []; }
+}
+
+// A new identity, the old key is not kept anywhere
+export function resetKey(): string | null {
+  try { localStorage.removeItem(KEY); } catch { return null; }
+  return getMyPubkey();
+}
+
+export function subscribeScores(url: string, authors: string[] | null, onScore: (s: CommunityScore) => void, onRemoved?: (pubkey: string, at: number) => void) {
   const sub = getPool().subscribeMany(RELAYS,
     { kinds: [SCORE_KIND], '#d': [dTag(url)], ...(authors ? { authors } : { limit: 200 }) },
     { onevent(event: Event) {
+        if (authors && !authors.includes(event.pubkey)) return; // un relais peut renvoyer autre chose
         const s = scoreFromEvent(event, url);
-        if (s && (!authors || authors.includes(s.pubkey))) onScore(s); // un relais peut renvoyer autre chose
+        if (s) return onScore(s);
+        const at = removalFromEvent(event, url);
+        if (at !== null) onRemoved?.(event.pubkey, at);
     } });
   return () => sub.close();
 }

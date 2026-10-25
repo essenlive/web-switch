@@ -31,6 +31,8 @@ export interface CommunityScore {
   won: boolean;  // false only in the time challenge (grid outgrew the limit)
   rank: number;  // lower is better, see rankOf
   timestamp: number;
+  inputs: Direction[]; // the verified moves, so the score can be replayed
+  times?: number[];
 }
 
 // One sortable number, so local highscores, sorting and "is this a record" share a single rule.
@@ -63,6 +65,21 @@ export function replay(url: string, inputs: Direction[], times?: number[], end?:
   }
 }
 
+// A removed score is the same replaceable event with an empty payload: relays keep only the newest, so it overwrites the score.
+export const TOMBSTONE = { v: 1, deleted: true } as const;
+
+// When (ms) a verified event says its author removed the score of this grid, else null.
+export function removalFromEvent(event: Event, url: string): number | null {
+  try {
+    if (event.kind !== SCORE_KIND || !verifyEvent(event)) return null;
+    if (!event.tags.some(t => t[0] === 'd' && t[1] === dTag(url))) return null;
+    const p = JSON.parse(event.content);
+    return p?.v === 1 && p.deleted === true ? event.created_at * 1000 : null;
+  } catch {
+    return null;
+  }
+}
+
 export function scoreFromEvent(event: Event, url: string): CommunityScore | null {
   try {
     if (event.kind !== SCORE_KIND || !verifyEvent(event)) return null;
@@ -80,7 +97,7 @@ export function scoreFromEvent(event: Event, url: string): CommunityScore | null
     } else if (p.times !== undefined || p.end !== undefined) return null;
     const r = replay(url, p.inputs, p.times, p.end);
     if (r === null) return null;
-    return { pubkey: event.pubkey, nickname: p.nickname, url, score: r.moves, won: r.won, rank: r.rank, timestamp: event.created_at * 1000 };
+    return { pubkey: event.pubkey, nickname: p.nickname, url, score: r.moves, won: r.won, rank: r.rank, timestamp: event.created_at * 1000, inputs: p.inputs, times: p.times };
   } catch {
     return null;
   }
