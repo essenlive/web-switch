@@ -1,14 +1,16 @@
 import { cn } from "@/lib/utils"
-import { RotateCcw, Trophy, MoveHorizontal, Dices } from "lucide-react";
+import { RotateCcw, MoveHorizontal, Dices } from "lucide-react";
 import { m } from "motion/react"
 import Link from "next/link";
+import { Records } from "@/components/records";
 
 const ring = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 
 export function Score({
     className,
     score,
-    highscore, 
+    highscore,
+    url,
     restart,
     randomUrl,
     growIn = null as number | null,
@@ -41,12 +43,8 @@ export function Score({
                 <RotateCcw />
             </m.button>
 
-            <div className="grow flex justify-end items-center p-3 bg-background rounded-lg">
-                <span className="mr-4 flex flex-col items-end leading-none">
-                    <span className="text-xs text-muted-foreground">best</span>
-                    <span className="text-xl font-bold">{highscore === null ? "-" : highscore}</span>
-                </span>
-                <Trophy aria-hidden />
+            <div className="grow flex justify-around items-center gap-2 px-1 py-3 bg-background rounded-lg">
+                <Records url={url} mine={highscore} />
             </div>
         </div>
     )

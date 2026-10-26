@@ -4,6 +4,7 @@ import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { Grid } from '@/components/grid'
+import { Records } from '@/components/records'
 import { Button } from '@/components/ui/button'
 import { matrixFromParams } from '@/lib/matrixHelpers'
 import type { GAStats } from '@/lib/solver/ga'
@@ -89,9 +90,11 @@ function SolverPage() {
   return (
     <div className="grow flex flex-col gap-2">
       <div className="p-4 bg-background rounded-lg">
-        <h2 className="text-sm font-bold text-muted-foreground">Solver · grid {new URLSearchParams(input.url).get('cs')}</h2>
+        <h2 className="text-sm font-bold text-muted-foreground">Solver · grid {new URLSearchParams(input.url).get('cs')}{params.get('s') && ` · ${params.get('s')}`}</h2>
         <Grid canva={input.canva} canvaIndexes={indexes} cursor={{ x: 0, y: 0, value: 1 }} />
       </div>
+
+      <Records url={input.url} className="justify-around p-3 bg-background rounded-lg" />
 
       <div className="grid grid-cols-4 gap-2">
         {[
