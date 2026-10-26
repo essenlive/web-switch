@@ -4,6 +4,7 @@ import { bytesToHex, hexToBytes } from 'nostr-tools/utils';
 import { nip19 } from 'nostr-tools';
 import { APP, SCORE_KIND, TOMBSTONE, dTag, removalFromEvent, scoreFromEvent, type CommunityScore, type ScorePayload } from '@/lib/scoreEvent';
 import { STORAGE_KEYS } from '@/lib/profile';
+import { NICKNAME_RE } from '@/lib/communityStorage';
 
 export const RELAYS = ['wss://relay.damus.io', 'wss://nos.lol', 'wss://relay.primal.net'];
 const KEY = STORAGE_KEYS.key;
@@ -64,6 +65,20 @@ export async function listMyScoreUrls(): Promise<string[]> {
     }
     return [...live].filter(([d, e]) => removalFromEvent(e, d.slice(APP.length + 1)) === null).map(([d]) => d.slice(APP.length + 1));
   } catch { return []; }
+}
+
+// Nickname of the newest score this identity published (the key alone does not carry it), null if none
+export async function fetchMyNickname(): Promise<string | null> {
+  const pk = getMyPubkey();
+  if (!pk) return null;
+  try {
+    const events = await getPool().querySync(RELAYS, { kinds: [SCORE_KIND], authors: [pk], '#t': [APP], limit: 500 }, { maxWait: 3000 });
+    for (const e of events.sort((a, b) => b.created_at - a.created_at)) {
+      const n = JSON.parse(e.content)?.nickname;
+      if (typeof n === 'string' && NICKNAME_RE.test(n)) return n;
+    }
+  } catch {}
+  return null;
 }
 
 // A new identity, the old key is not kept anywhere

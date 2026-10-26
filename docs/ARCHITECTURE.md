@@ -126,5 +126,5 @@ URL `?s=…&cs=WxH&t=true` (seed required). Clock starts at the first move attem
 
 - The machine never reads a clock. `input_move` and `tick` events carry `at` (ms since the clock started). In `Game_Idle`, if `at - clockBase >= growMs`, one growth step runs (`clockBase` then advances by `growMs`), the grid is evaluated, and the event is re-raised until no growth is due; then the move is played.
 - The page sends `tick` every 250 ms and `at` with every move. Because growth depends only on `at` and the removals, a replay without ticks reaches the same states.
-- Payload adds `times` (one per input) and `end` (time of the loss, if lost). `scoreFromEvent` bounds them (integers, increasing, ≥ 120 ms apart, ≤ 30 min). **They are self-reported: a cheater can claim faster play.** This is the one part of the system that is not trustless.
+- Payload adds `times` (one per input) and `end` (time of the loss, if lost). `scoreFromEvent` bounds them (integers, increasing, ≥ 50 ms apart, ≤ 30 min). **They are self-reported: a cheater can claim faster play.** This is the one part of the system that is not trustless.
 - Changing `growMs`, `MAX_SIDE` or `growLine` changes every shared time-challenge result.

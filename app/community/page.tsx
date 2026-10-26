@@ -8,7 +8,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useCommunity } from '@/hooks/useCommunity';
-import { exportKey, importKey } from '@/lib/nostr';
+import { loadSettings, saveSettings } from '@/lib/communityStorage';
+import { exportKey, fetchMyNickname, importKey } from '@/lib/nostr';
 import { keyLink } from '@/lib/links';
 
 type Section = 'nickname' | 'friends' | 'backup' | 'danger';
@@ -56,9 +57,12 @@ export default function Community() {
 
   const hideKey = () => { setNsec(null); setQr(''); };
 
-  const confirmImport = () => {
-    if (pendingImport && importKey(pendingImport)) location.reload();
-    else { setPendingImport(null); say('backup', 'That secret key is not valid', true); }
+  const confirmImport = async () => {
+    if (pendingImport && importKey(pendingImport)) {
+      const nickname = await fetchMyNickname();
+      saveSettings({ ...loadSettings(), nickname }); // friends stay as they were
+      location.reload();
+    } else { setPendingImport(null); say('backup', 'That secret key is not valid', true); }
   };
 
   const nicknameHint = 'nickname-hint';

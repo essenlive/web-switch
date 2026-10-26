@@ -14,7 +14,7 @@ const DIRECTIONS: Direction[] = ['up', 'left', 'down', 'right'];
 const MAX_MOVES = 500;
 // Time challenge timestamps are self-reported (ms since the first move). Bounds only stop casual tampering.
 const MAX_TIME = 30 * 60 * 1000;
-const MIN_GAP = 120; // faster than a human can swipe
+const MIN_GAP = 50; // key repeat or a quick double swipe is ~80 ms apart: only reject what no input device produces
 
 export interface ScorePayload {
   v: 1;

@@ -138,11 +138,21 @@ describe('time challenge', () => {
     const { times, end, ...rest } = g;
     expect(scoreFromEvent(tsign({ ...rest, end }), TGRID)).toBeNull(); // no times
     expect(scoreFromEvent(tsign({ ...rest, times: times.slice(1), end }), TGRID)).toBeNull(); // wrong length
-    expect(scoreFromEvent(tsign({ ...rest, times: times.map(t => t / 10), end }), TGRID)).toBeNull(); // faster than a human
+    expect(scoreFromEvent(tsign({ ...rest, times: times.map(t => t / 50), end }), TGRID)).toBeNull(); // faster than any input device
     expect(scoreFromEvent(tsign({ ...rest, times: [...times].reverse(), end }), TGRID)).toBeNull(); // not increasing
     expect(scoreFromEvent(tsign({ ...rest, times, end: 1000 }), TGRID)).toBeNull(); // end before the last move
     expect(scoreFromEvent(tsign({ ...rest, times, end: times[times.length - 1] }), TGRID)).toBeNull(); // not lost yet at that time
     expect(scoreFromEvent(tsign({ ...rest, times, end, inputs: [...rest.inputs, 'right'] }), TGRID)).toBeNull();
+  });
+
+  it('accepts a real won game played fast (moves 84 to 100 ms apart)', () => {
+    const url = '?s=20261026&cs=6x8&t=true';
+    const inputs = 'r,r,u,l,d,r,u,l,d,r,r,r,u,r,d,u,l,l,l,d,r,u,l,l,d,u,r,r,r,d,l,l,u,r,d,l,l,u,r,r,r,d,r,r,u,r,d,d,l,d,r,d,l,u,u,r,d,d,l,r,u'
+      .split(',').map(c => ({ r: 'right', l: 'left', u: 'up', d: 'down' } as const)[c as 'r']);
+    const times = [0,167,283,483,650,850,1050,1283,1450,2183,2333,2867,3083,3283,3433,4450,5300,5483,5817,5967,6250,6450,6650,6817,6983,9100,9367,9567,9784,10084,10534,10717,10934,11234,12267,12484,12667,12867,13084,13284,13467,13600,13800,13967,14150,14784,14967,15184,15300,17334,17550,17717,17850,18050,18234,18417,19300,19467,19567,20500,20584];
+    const s = scoreFromEvent(sign({ v: 1, nickname: 'bob', inputs, times }, [['d', dTag(url)]]), url);
+    expect(s?.won).toBe(true);
+    expect(s?.score).toBe(61);
   });
 
   it('timestamps do not belong on a normal grid, and timed moves are not valid there', () => {
