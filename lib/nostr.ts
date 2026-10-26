@@ -2,7 +2,7 @@ import { SimplePool } from 'nostr-tools/pool';
 import { finalizeEvent, generateSecretKey, getPublicKey, type Event } from 'nostr-tools/pure';
 import { bytesToHex, hexToBytes } from 'nostr-tools/utils';
 import { nip19 } from 'nostr-tools';
-import { APP, SCORE_KIND, TOMBSTONE, dTag, removalFromEvent, scoreFromEvent, type CommunityScore, type ScorePayload } from '@/lib/scoreEvent';
+import { APP, SCORE_KIND, replay, TOMBSTONE, dTag, removalFromEvent, scoreFromEvent, type CommunityScore, type ScorePayload } from '@/lib/scoreEvent';
 import { STORAGE_KEYS } from '@/lib/profile';
 import { NICKNAME_RE } from '@/lib/communityStorage';
 
@@ -37,6 +37,30 @@ export function publishScore(url: string, payload: Omit<ScorePayload, 'v'>): voi
     { kind: SCORE_KIND, created_at: Math.floor(Date.now() / 1000),
       tags: [['d', dTag(url)], ['t', APP]], content: JSON.stringify({ v: 1, ...payload }) }, sk);
   getPool().publish(RELAYS, event).forEach(p => p.catch(() => {})); // best effort, one relay is enough
+}
+
+const BOT_LETTERS = { u: 'up', r: 'right', d: 'down', l: 'left' } as const;
+
+// The solver page posts its best solution as `the-bot`, with the key of NEXT_PUBLIC_BOT_NSEC (.env.local, never committed).
+// Only a solution that beats the bot's published score of that grid is sent: the event is replaceable.
+export async function publishBotScore(url: string, solution: string): Promise<void> {
+  const nsec = process.env.NEXT_PUBLIC_BOT_NSEC;
+  if (!nsec) return;
+  try {
+    const d = nip19.decode(nsec);
+    if (d.type !== 'nsec') return;
+    const inputs = [...solution].map(l => BOT_LETTERS[l as keyof typeof BOT_LETTERS]);
+    const mine = replay(url, inputs);
+    if (!mine?.won) return;
+    const pubkey = getPublicKey(d.data);
+    const events = await getPool().querySync(RELAYS, { kinds: [SCORE_KIND], authors: [pubkey], '#d': [dTag(url)] }, { maxWait: 3000 });
+    const known = events.map(e => scoreFromEvent(e, url)).filter((s): s is CommunityScore => s !== null);
+    if (known.some(s => s.rank <= mine.rank)) return;
+    const event = finalizeEvent(
+      { kind: SCORE_KIND, created_at: Math.floor(Date.now() / 1000),
+        tags: [['d', dTag(url)], ['t', APP]], content: JSON.stringify({ v: 1, nickname: 'the-bot', inputs }) }, d.data);
+    getPool().publish(RELAYS, event).forEach(p => p.catch(() => {}));
+  } catch {}
 }
 
 // Removes a score: overwrites it with a tombstone (what relays reliably honour), then asks for a NIP-09 deletion too.

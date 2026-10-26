@@ -35,6 +35,32 @@ export interface GAStats {
     averageTiles: number;
 }
 
+// Plays moves (replay letters) and returns the ones that were accepted, or null if the grid is not won
+function play(canva: number[][], moves: string): string | null {
+    const s = createState(canva);
+    let played = '';
+    for (const m of moves) {
+        if (isWon(s)) break;
+        if (step(s, MOVE_LETTERS.indexOf(m))) played += m;
+    }
+    return isWon(s) ? played : null;
+}
+
+// Drops useless moves: any run of up to 8 moves that can be cut while the grid is still won (ud in a side column, lr along an edge...)
+export function prune(canva: number[][], moves: string): string {
+    let best = play(canva, moves) ?? moves;
+    for (let again = true; again;) {
+        again = false;
+        for (let k = 1; k <= 8 && !again; k++) {
+            for (let i = 0; i + k <= best.length && !again; i++) {
+                const shorter = play(canva, best.slice(0, i) + best.slice(i + k));
+                if (shorter !== null && shorter.length < best.length) { best = shorter; again = true; }
+            }
+        }
+    }
+    return best;
+}
+
 const NOT_WON = 1_000_000;
 const HOPELESS = 2_000_000;
 const STALE_STAGES = 3; // stages in a row without progress before a pass starts over
@@ -66,8 +92,8 @@ export function createGA(canva: number[][], options: GAOptions = {}) {
     const population = options.population ?? 1000;
     const length = options.length ?? 50;
     const beam = options.beam ?? 100;
-    const stageGenerations = options.generations ?? 15;
     const maxStages = options.maxStages ?? 30;
+    const stageGenerations = maxStages === 1 ? Infinity : options.generations ?? 15; // one stage = a plain GA, it runs until stopped
     const elite = Math.min(options.elite ?? Math.max(2, Math.round(population * 0.02)), population - 1);
     const tileWeight = options.tileWeight ?? 8;
     const moveWeight = options.moveWeight ?? 1;
@@ -203,7 +229,7 @@ export function createGA(canva: number[][], options: GAOptions = {}) {
     function endStage() {
         const winner = order.find(i => evals[i].won);
         if (winner !== undefined) {
-            const text = pool[starts[winner]].moves + movesOf(winner);
+            const text = prune(canva, pool[starts[winner]].moves + movesOf(winner));
             if (!best || text.length < best.moves.length) best = { moves: text, tiles: evals[winner].tiles };
             startPass();
             return;
