@@ -21,7 +21,7 @@ The board is `number[][]` (values 1–4, row 0 at the bottom of the display). Th
 | Route | [app/[mode]/page.tsx](../app/%5Bmode%5D/page.tsx) | Wires URL → machine → UI, controls, local highscores, Nostr publish. |
 | Verification | [lib/scoreEvent.ts](../lib/scoreEvent.ts) | `replay()` and `scoreFromEvent()`: trustless score recomputation. |
 | Network | [lib/nostr.ts](../lib/nostr.ts) | Key storage, `publishScore`, `subscribeScores`. |
-| Social | [hooks/useCommunity.ts](../hooks/useCommunity.ts), [lib/communityStorage.ts](../lib/communityStorage.ts), [lib/links.ts](../lib/links.ts) | Nickname, friends, friend/key links. |
+| Social | [hooks/useCommunity.ts](../hooks/useCommunity.ts), [lib/communityStorage.ts](../lib/communityStorage.ts), [lib/links.ts](../lib/links.ts) | Nickname, friends (max 30, `MAX_FRIENDS`, so the key + friends transfer link fits one QR code), friend/key links. |
 | Leaderboard | [hooks/useCommunityScores.ts](../hooks/useCommunityScores.ts), [components/leaderboard.tsx](../components/leaderboard.tsx) | Subscribe, dedupe per pubkey, sort ascending. |
 | UI | [components/](../components) (`grid`, `score`, `endScreen`, `inputList`, `helpScreen`, …) | Presentational; props only, no machine access. |
 | Input | [hooks/use-controls.ts](../hooks/use-controls.ts) | Arrow keys, space, swipe → callbacks. |

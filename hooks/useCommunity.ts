@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { nip19 } from 'nostr-tools';
 import { getMyPubkey, listMyScoreUrls, publishScore, resetKey, unpublishScore } from '@/lib/nostr';
 import { loadHighscores, removeHighscore as removeLocalHighscore, wipeProfile, type Highscore } from '@/lib/profile';
-import { loadSettings, saveSettings, NICKNAME_RE, type CommunitySettings } from '@/lib/communityStorage';
+import { loadSettings, saveSettings, NICKNAME_RE, MAX_FRIENDS, type CommunitySettings } from '@/lib/communityStorage';
 import { parseFriendCode } from '@/lib/links';
 
 export function useCommunity() {
@@ -25,6 +25,7 @@ export function useCommunity() {
     if (f.pubkey === myPubkey) return "That's you!";
     const cur = loadSettings();
     if (cur.following.some(x => x.pubkey === f.pubkey)) return 'Already in your friends';
+    if (cur.following.length >= MAX_FRIENDS) return `You can follow up to ${MAX_FRIENDS} friends`;
     update({ ...cur, following: [...cur.following, f] });
     return null;
   }, [myPubkey]);

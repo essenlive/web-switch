@@ -8,9 +8,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useCommunity } from '@/hooks/useCommunity';
-import { loadSettings, saveSettings } from '@/lib/communityStorage';
+import { loadSettings, saveSettings, type Following } from '@/lib/communityStorage';
 import { exportKey, fetchMyNickname, importKey } from '@/lib/nostr';
-import { keyLink } from '@/lib/links';
+import { keyLink, parseKeyLink } from '@/lib/links';
 
 type Section = 'nickname' | 'friends' | 'backup' | 'danger';
 const tray = 'flex flex-col gap-3 p-4 bg-background rounded-lg';
@@ -26,7 +26,7 @@ export default function Community() {
   const [restore, setRestore] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [pendingImport, setPendingImport] = useState<string | null>(null); // key waiting for an explicit "Replace"
+  const [pendingImport, setPendingImport] = useState<{ nsec: string; friends: Following[] } | null>(null); // key waiting for an explicit "Replace"
 
   const say = (section: Section, text: string, error = false) => setNote({ section, text, error });
   const renderNote = (section: Section) => (
@@ -42,25 +42,25 @@ export default function Community() {
 
   // Identity link (#cle=nsec): the fragment is never sent to the server
   useEffect(() => {
-    const m = location.hash.match(/^#cle=(nsec1\w+)/);
-    if (!m) return;
+    const link = parseKeyLink(location.hash);
+    if (!link) return;
     history.replaceState(null, '', location.pathname);
-    setPendingImport(m[1]);
+    setPendingImport(link);
   }, []);
 
   const showKey = async () => {
     const k = exportKey();
     if (!k) return;
     setNsec(k);
-    setQr(await QRCode.toDataURL(keyLink(k)));
+    setQr(await QRCode.toDataURL(keyLink(k, following)).catch(() => QRCode.toDataURL(keyLink(k)))); // too many friends for one QR: key only
   };
 
   const hideKey = () => { setNsec(null); setQr(''); };
 
   const confirmImport = async () => {
-    if (pendingImport && importKey(pendingImport)) {
+    if (pendingImport && importKey(pendingImport.nsec)) {
       const nickname = await fetchMyNickname();
-      saveSettings({ ...loadSettings(), nickname }); // friends stay as they were
+      saveSettings({ nickname, following: pendingImport.friends.length ? pendingImport.friends : loadSettings().following });
       location.reload();
     } else { setPendingImport(null); say('backup', 'That secret key is not valid', true); }
   };
@@ -145,7 +145,7 @@ export default function Community() {
           {nsec ? (
             <>
               <code className="break-all rounded-md bg-muted p-2 text-sm">{nsec}</code>
-              <Button className="h-11" onClick={() => copy(keyLink(nsec), 'backup', 'Transfer link copied')}><Copy /> Copy transfer link</Button>
+              <Button className="h-11" onClick={() => copy(keyLink(nsec, following), 'backup', 'Transfer link copied')}><Copy /> Copy transfer link</Button>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               {qr && <img src={qr} alt="QR code to move your identity to another device" width={200} height={200} className="self-center bg-white p-2 rounded-md" />}
               <Button variant="outline" className="h-11" onClick={hideKey}>Hide key</Button>
@@ -181,7 +181,7 @@ export default function Community() {
           onSubmit={e => {
             e.preventDefault();
             if (!restore.trim().startsWith('nsec1')) return say('backup', 'That secret key is not valid', true);
-            setPendingImport(restore.trim());
+            setPendingImport({ nsec: restore.trim(), friends: [] });
             setRestore('');
           }}
         >
