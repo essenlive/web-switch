@@ -87,6 +87,7 @@ export function HelpScreen({
                     </div>
                     <p className="text-base">This mini game is inspired by Russpack, a game I used to play on the Archos Gmini400 media player. All credit goes to its original creator.</p>
                     <p className="text-base">I rebuilt it because I could not find a playable copy.</p>
+                    <p className="text-base">Last updated {new Date(process.env.NEXT_PUBLIC_UPDATED_AT!).toLocaleString(undefined, { dateStyle: 'long', timeStyle: 'short' })}.</p>
                     <p className="text-base">Minimal usage tracking is done with <Link className="underline" href="https://umami.is/" target="_blank" rel="noopener noreferrer">Umami</Link>.</p>
                 </section>
                 <section className="flex flex-col gap-2 p-4 bg-background rounded-lg">

@@ -1,6 +1,14 @@
 import type { NextConfig } from 'next'
+import { execSync } from 'node:child_process'
+
+// Date of the latest commit (shown in the info tab); the build time if git is not available
+const updatedAt = (() => {
+  try { return execSync('git log -1 --format=%cI', { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim() || new Date().toISOString(); }
+  catch { return new Date().toISOString(); }
+})()
 
 const nextConfig: NextConfig = {
+  env: { NEXT_PUBLIC_UPDATED_AT: updatedAt },
   async redirects() {
     return [
       {
