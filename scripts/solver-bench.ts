@@ -6,9 +6,10 @@ import { createGA, type GAStats } from '../lib/solver/ga';
 const [seeds = '5', size = '6x6', gens = '2000', pop = '400', len = '150'] = process.argv.slice(2);
 const [rows, cols] = size.split('x').map(Number);
 console.log(`grid ${size}, ${seeds} seeds, ${gens} generations, population ${pop}, length ${len}`);
+const results: number[] = [];
 for (let i = 0; i < Number(seeds); i++) {
     const canva = generateRandomMatrix(`bench${i}`, rows, cols);
-    const ga = createGA(canva, { population: Number(pop), length: Number(len), seed: i + 1 });
+    const ga = createGA(canva, { population: Number(pop), length: Number(len), seed: i + 1, ...JSON.parse(process.env.GA ?? '{}') });
     const t0 = performance.now();
     let firstWin = -1, last: GAStats | null = null;
     for (let g = 0; g <= Number(gens); g++) {
@@ -16,5 +17,7 @@ for (let i = 0; i < Number(seeds); i++) {
         if (last.won && firstWin < 0) firstWin = g;
     }
     const secs = ((performance.now() - t0) / 1000).toFixed(1);
+    results.push(last!.won ? last!.moves : NaN);
     console.log(`bench${i}: first win ${firstWin < 0 ? 'never' : 'gen ' + firstWin} | final ${last!.won ? last!.moves + ' moves' : last!.tiles + ' tiles left'} | ${secs}s`);
 }
+console.log(`average ${(results.reduce((a, b) => a + b, 0) / results.length).toFixed(1)} moves, ${process.env.GA ?? 'default options'}`);
