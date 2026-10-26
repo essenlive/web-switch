@@ -64,6 +64,12 @@ describe('time challenge', () => {
   const params = (url: string) => { const p = new URLSearchParams(url); return { s: p.get('s') || '', cs: p.get('cs') || '', c: p.get('c') || '', t: p.get('t') || '' }; };
   const newActor = () => createActor(switchMachine, { input: matrixFromParams(params(TGRID)).input }).start();
 
+  it('the time challenge is not the daily grid of the same seed', () => {
+    const daily = matrixFromParams(params(GRID)).input.canva;
+    expect(matrixFromParams(params(TGRID)).input.canva).not.toEqual(daily);
+    expect(matrixFromParams(params(TGRID)).input.canva).toEqual(generateRandomMatrix('testt', 3, 3));
+  });
+
   it('t is part of the grid identity, and needs a seed', () => {
     expect(matrixFromParams(params(TGRID)).input.url).toBe(TGRID);
     expect(matrixFromParams(params(GRID)).input.url).toBe(GRID);
@@ -145,14 +151,15 @@ describe('time challenge', () => {
     expect(scoreFromEvent(tsign({ ...rest, times, end, inputs: [...rest.inputs, 'right'] }), TGRID)).toBeNull();
   });
 
-  it('accepts a real won game played fast (moves 84 to 100 ms apart)', () => {
-    const url = '?s=20261026&cs=6x8&t=true';
-    const inputs = 'r,r,u,l,d,r,u,l,d,r,r,r,u,r,d,u,l,l,l,d,r,u,l,l,d,u,r,r,r,d,l,l,u,r,d,l,l,u,r,r,r,d,r,r,u,r,d,d,l,d,r,d,l,u,u,r,d,d,l,r,u'
-      .split(',').map(c => ({ r: 'right', l: 'left', u: 'up', d: 'down' } as const)[c as 'r']);
-    const times = [0,167,283,483,650,850,1050,1283,1450,2183,2333,2867,3083,3283,3433,4450,5300,5483,5817,5967,6250,6450,6650,6817,6983,9100,9367,9567,9784,10084,10534,10717,10934,11234,12267,12484,12667,12867,13084,13284,13467,13600,13800,13967,14150,14784,14967,15184,15300,17334,17550,17717,17850,18050,18234,18417,19300,19467,19567,20500,20584];
-    const s = scoreFromEvent(sign({ v: 1, nickname: 'bob', inputs, times }, [['d', dTag(url)]]), url);
-    expect(s?.won).toBe(true);
-    expect(s?.score).toBe(61);
+  it('accepts quick play: moves 84 ms apart', () => {
+    const a = newActor();
+    let at = 0, i = 0;
+    for (; i < 100; at += 84) mv(a, i++, at); // a burst of quick moves, then the clock runs out
+    for (; a.getSnapshot().value !== 'Game_Over' && at < 1e6; at += 250) a.send({ type: 'tick', params: { at } });
+    const c = a.getSnapshot().context;
+    expect(a.getSnapshot().value).toBe('Game_Over');
+    const s = scoreFromEvent(tsign({ inputs: c.inputList, times: c.times, end: c.endAt }), TGRID);
+    expect(s?.score).toBe(c.inputList.length);
   });
 
   it('timestamps do not belong on a normal grid, and timed moves are not valid there', () => {

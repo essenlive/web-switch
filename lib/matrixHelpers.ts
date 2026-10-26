@@ -275,7 +275,8 @@ export function matrixFromParams({s, cs, c, t}:{
     }
     // Create custom canva from seed
     else if(s){
-        const canva = generateRandomMatrix(s, canvaSize.height, canvaSize.width);
+        // The time challenge gets its own grid: a 't' on the seed (the url keeps the plain seed)
+        const canva = generateRandomMatrix(timerMode ? `${s}t` : s, canvaSize.height, canvaSize.width);
         // Reformat url
         // t is part of the identity: same seed, different rules, different leaderboard
         const url = `?s=${s}&cs=${canvaSize.width}x${canvaSize.height}${timerMode ? "&t=true" : ""}`
