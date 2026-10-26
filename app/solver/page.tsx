@@ -29,8 +29,8 @@ function SolverPage() {
     s: params.get('s') || '', cs: params.get('cs') || '', c: params.get('c') || '', t: '',
   }), [params])
 
-  const [population, setPopulation] = useState(400)
-  const [length, setLength] = useState(150)
+  const [population, setPopulation] = useState(1000)
+  const [length, setLength] = useState(50)
   const [running, setRunning] = useState(false)
   const [stats, setStats] = useState<GAStats | null>(null)
   const [history, setHistory] = useState<GAStats[]>([])
@@ -94,11 +94,12 @@ function SolverPage() {
 
       <div className="flex flex-col gap-2 p-4 bg-background rounded-lg">
         <Progress history={history} total={total} />
+        {stats && <p className="text-xs text-muted-foreground">pass {stats.pass}, stage {stats.stage}</p>}
         <div className="flex gap-2">
           <label className="grow text-xs text-muted-foreground">Population
-            <input type="number" min={20} max={5000} step={50} value={population} disabled={running} onChange={e => setPopulation(Number(e.target.value))} className="w-full p-2 rounded-md border bg-background text-foreground" />
+            <input type="number" min={20} max={5000} step={100} value={population} disabled={running} onChange={e => setPopulation(Number(e.target.value))} className="w-full p-2 rounded-md border bg-background text-foreground" />
           </label>
-          <label className="grow text-xs text-muted-foreground">Moves per attempt
+          <label className="grow text-xs text-muted-foreground">Moves per stage
             <input type="number" min={10} max={1000} step={10} value={length} disabled={running} onChange={e => setLength(Number(e.target.value))} className="w-full p-2 rounded-md border bg-background text-foreground" />
           </label>
         </div>
