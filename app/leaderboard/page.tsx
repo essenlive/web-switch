@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { Leaderboard } from '@/components/leaderboard';
+import { Standings } from '@/components/standings';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScoreCalendar, monthOf, monthUrls } from '@/components/scoreCalendar';
@@ -31,6 +32,7 @@ export default function LeaderboardPage() {
   const [gridText, setGridText] = useState(shared ?? '');
   const [month, setMonth] = useState('');
   const [world, setWorld] = useState(false);
+  const [tab, setTab] = useState<'standings' | 'puzzles'>(shared ? 'puzzles' : 'standings');
   const today = toDay(getDailyString());
   useEffect(() => { setDay(today); setMonth(monthOf(today)); }, [today]);
 
@@ -52,7 +54,15 @@ export default function LeaderboardPage() {
         <Button className="h-11 grow text-base rounded-lg" variant={world ? 'default' : 'outline'} aria-pressed={world} onClick={() => setWorld(true)}>World</Button>
       </div>
 
-      <div className="flex flex-col gap-3 p-4 bg-background rounded-lg">
+      <div role="group" aria-label="Leaderboard tab" className="flex gap-2">
+        {(['standings', 'puzzles'] as const).map(t => (
+          <Button key={t} className="h-11 grow capitalize" variant={tab === t ? 'default' : 'outline'} aria-pressed={tab === t} onClick={() => setTab(t)}>{t}</Button>
+        ))}
+      </div>
+
+      {tab === 'standings' && <Standings today={today} world={world} />}
+
+      {tab === 'puzzles' && <div className="flex flex-col gap-3 p-4 bg-background rounded-lg">
             <div role="group" aria-label="Leaderboard mode" className="flex flex-wrap gap-2">
               {VIEWS.map(v => (
                 <Button key={v.id} className="h-11" variant={view === v.id ? 'default' : 'outline'} aria-pressed={view === v.id} onClick={() => setView(v.id)}>{v.label}</Button>
@@ -74,9 +84,9 @@ export default function LeaderboardPage() {
                 {url && <Button asChild className="h-11"><Link href={playPath(url)}>Play {day}</Link></Button>}
               </>
             )}
-      </div>
+      </div>}
 
-      {url && <Leaderboard url={url} all={scores} isLoading={isLoading} />}
+      {tab === 'puzzles' && url && <Leaderboard url={url} all={scores} isLoading={isLoading} />}
     </div>
   );
 }
