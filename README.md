@@ -40,6 +40,10 @@ The easiest way to deploy your Next.js app is to use the [Vercel Platform](https
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
 
+## Solver
+
+A hidden page searches for a short solution of a grid, in the browser (genetic search in a Web Worker): open `/solver?s=abc&cs=8x8` (same params as a game). Nothing links to it. How it works, results and limits are in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#9-solver-hidden-page).
+
 ## Todo
 
  - [x] Swipe gestures
@@ -57,3 +61,4 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
  - [-] Add better score sharing (add to local sessions)
  - [ ] Add mode timer
  
+ - [x] Solver (hidden `/solver` page)

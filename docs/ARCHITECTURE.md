@@ -26,6 +26,7 @@ The board is `number[][]` (values 1–4, row 0 at the bottom of the display). Th
 | UI | [components/](../components) (`grid`, `score`, `endScreen`, `inputList`, `helpScreen`, …) | Presentational; props only, no machine access. |
 | Input | [hooks/use-controls.ts](../hooks/use-controls.ts) | Arrow keys, space, swipe → callbacks. |
 | Entry | [app/page.tsx](../app/page.tsx), [next.config.ts](../next.config.ts) | Home cards; `/daily` and `/julie` redirects. |
+| Solver | [lib/solver/](../lib/solver), [app/solver/page.tsx](../app/solver/page.tsx) | Hidden page that searches for a short winning move list. See section 9. |
 
 Stack: Next.js (App Router, client pages), XState 5, Tailwind 4 + shadcn/Radix, `prando` for seeded randomness, `nostr-tools`. Tests: Vitest ([lib/scoreEvent.test.ts](../lib/scoreEvent.test.ts)).
 
@@ -128,3 +129,62 @@ URL `?s=…&cs=WxH&t=true` (seed required). Clock starts at the first move attem
 - The page sends `tick` every 250 ms and `at` with every move. Because growth depends only on `at` and the removals, a replay without ticks reaches the same states.
 - Payload adds `times` (one per input) and `end` (time of the loss, if lost). `scoreFromEvent` bounds them (integers, increasing, ≥ 50 ms apart, ≤ 30 min). **They are self-reported: a cheater can claim faster play.** This is the one part of the system that is not trustless.
 - Changing `growMs`, `MAX_SIDE` or `growLine` changes every shared time-challenge result.
+
+## 9. Solver (hidden page)
+
+`/solver?s=…&cs=WxH` (or `c=…`, the same params as a game, no `t`) searches for a short winning move list in the browser. It is a tool, not a game mode: nothing links to it, the layout sets `robots: noindex`, and it never publishes anything to Nostr or touches highscores. The best solution is opened in `/replay` through the usual link (`/replay{url}&i={moves}`).
+
+| File | Role |
+|---|---|
+| [lib/solver/simulate.ts](../lib/solver/simulate.ts) | Allocation-free copy of the rules (`step`, `isWon`, `nearness`). No imports, so it runs in a worker and in node. |
+| [lib/solver/simulate.test.ts](../lib/solver/simulate.test.ts) | Plays thousands of random moves through both this simulator and the real machine, comparing grid, cursor, held tile, accepted/ignored and win after every move. |
+| [lib/solver/ga.ts](../lib/solver/ga.ts) | `createGA(canva, options).step()`: one generation per call, returns `GAStats`. Pure and seeded (mulberry32), same grid and seed give the same run. |
+| [lib/solver/worker.ts](../lib/solver/worker.ts) | Web Worker: runs `step()` in 100 ms slices, posts the stats, keeps improving after a win until it receives `stop`. |
+| [app/solver/page.tsx](../app/solver/page.tsx) | Starts the worker, shows generation / tiles left / moves / status, a tiles-left chart, the solution string, Start/Stop and the replay link. |
+| [scripts/solver-bench.ts](../scripts/solver-bench.ts) | Headless benchmark (see below). |
+
+### Why a second copy of the rules
+
+The machine clones its whole context on every action, far too slow for millions of moves. `simulate.ts` keeps a flat `Uint8Array` (row-major, row 0 at the bottom like `canva`), the cursor and the held tile, and mutates them in place. **It must stay identical to `switchMachine.ts` and `matrixHelpers.ts`**, quirks included (for example the cursor `y` or `x` is decremented for whichever row or column is removed, and rows are removed before columns, one per pass). The equivalence test is what keeps the two in sync: if you change a rule in the game, it fails until the simulator follows. Time challenge is out of scope (no growth, no `tick`).
+
+### How the search works
+
+A **genome** is a fixed-length string of moves (0..3 = `u r d l`, the letters of a replay link). The game ignores a move it cannot play, so every genome is valid and needs no repair; only *accepted* moves count, and the solution string only contains those.
+
+**Fitness** (lower is better):
+- a win scores the moves played, so the search keeps shortening solutions;
+- anything else scores the best position reached along the genome: `tileWeight × tiles left + nearness + moveWeight × moves played`. The genome's *used* length is that best prefix; the tail keeps drifting and exploring.
+
+`nearness(state)` is the smooth term that gives the search a slope while "tiles left" is flat. To win you must remove `rows − 1` rows or `cols − 1` columns; each line costs its tiles that are not the majority colour of that line; the heuristic is the sum of the cheapest `n − 1` lines, taking the better of rows and columns. It is a guide, not a bound.
+
+**Operators.** Tournament selection of 3, elitism (2% of the population, at least 2). Single-point crossover, only between genomes that share the same starting position (a tail is meaningless from another position). Mutations keep the head and change what follows: a different move, insert, delete, or redo of 2–8 moves; half of them fall inside the used prefix, half in the tail.
+
+**Stages (beam of GAs).** One long genome is hopeless on 8×8, so the game is solved `length` moves at a time:
+1. A *stage* evolves genomes from a pool of starting positions (the grid itself for stage 0) for `generations` generations. Genomes are spread round-robin over the pool.
+2. At the end of the stage, the best `beam` *distinct* positions reached (deduplicated by a hash of grid, cursor and held tile) become the pool of the next stage, each with the moves that lead to it.
+3. A win ends the *pass*. The next pass starts over from the grid and can only win with fewer moves than the best solution (longer attempts are scored `HOPELESS` and cut off early).
+4. A pass also starts over after 3 stages without progress or `maxStages` stages.
+
+Defaults: population 1000, length 50, beam 100, generations 15, maxStages 30, tileWeight 8, moveWeight 1, seed 1. The page lets you change population and moves per stage.
+
+### Benchmark and results
+
+`scripts/solver-bench.ts` runs the search without the browser. Bundle it (`npx esbuild scripts/solver-bench.ts --bundle --platform=node --format=esm --outfile=bench.mjs`), then `GA='{"moveWeight":1}' node bench.mjs <seeds> <RxC> <generations> <population> <length>`. It prints the first-win generation, the final result and the average. `GA` is a JSON merged into the options.
+
+Measured on four 8×8 grids (seeds `bench0`..`bench3`, population 1000, 50 moves per stage):
+
+| Setup | Result |
+|---|---|
+| Single stage, 150 moves, population 400 | wins only some grids, slowly, about 100–140 moves |
+| Staged, ranked by tiles only (`moveWeight 0`) | wins everywhere within 76 generations (about 4 s), 126 moves on average |
+| Staged, `moveWeight 1` (default) | 99.5 moves on average |
+
+`moveWeight 0.5` gives 106.5; 2 and above stall some grids (no win at all). Beam 300 and 30 generations per stage give the same result as the defaults. 6×6 is solved in seconds. Not benchmarked yet: 10×10 and larger.
+
+### Known limits and ideas
+
+- Solutions are still long (around 100 moves on 8×8); the real minimum is unknown.
+- After the first win, later passes almost never find a shorter one. A polishing phase (a GA on the full solution seeded from the best one, with delete / insert / rewrite mutations) is the likely next step.
+- `nearness` is recomputed after every accepted move and is the main cost; it could be evaluated less often.
+- The chart is flat after the first win, because the headline stays on the best solution.
+- The solver says nothing about the leaderboard: a solver-found list is a valid score for `scoreFromEvent`, nothing in the app tells it apart from a human one.
