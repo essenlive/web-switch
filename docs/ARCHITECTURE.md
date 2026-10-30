@@ -133,7 +133,7 @@ URL `?s=…&cs=WxH&t=true` (seed required). Clock starts at the first move attem
 
 ## 9. Solver (hidden page)
 
-`/solver?s=…&cs=WxH` (or `c=…`, the same params as a game, no `t`) searches for a short winning move list in the browser. It is a tool, not a game mode: nothing links to it, the layout sets `robots: noindex`, and it never touches the local highscores. The best solution is opened in `/replay` through the usual link (`/replay{url}&i={moves}`). It can also publish its best solution to the leaderboard as `the-bot` (see "Publishing as the-bot" below).
+`/solver?s=…&cs=WxH` (or `c=…`, the same params as a game, no `t`) searches for a short winning move list in the browser. Without params it opens on a picker of the benchmark grids. It is a tool, not a game mode: nothing links to it, the layout sets `robots: noindex`, and it never touches the local highscores. The best solution is opened in `/replay` through the usual link (`/replay{url}&i={moves}`). It can also publish its best solution to the leaderboard as `the-bot` (see "Publishing as the-bot" below).
 
 | File | Role |
 |---|---|
@@ -146,7 +146,13 @@ URL `?s=…&cs=WxH&t=true` (seed required). Clock starts at the first move attem
 | [lib/solver/ga.test.ts](../lib/solver/ga.test.ts), [ring.test.ts](../lib/solver/ring.test.ts), [beam.test.ts](../lib/solver/beam.test.ts) | `prune`; ring numbering and walks played move by move; `solveExact` against a search over single moves; the beam's solution played in the real machine. |
 | [lib/solver/bench.test.ts](../lib/solver/bench.test.ts) | The benchmark (skipped unless asked, see below). |
 | [lib/solver/worker.ts](../lib/solver/worker.ts) | Web Worker: runs `step()` in 100 ms slices, posts the stats, keeps improving after a win until it receives `stop`. |
-| [app/solver/page.tsx](../app/solver/page.tsx) | Engine menu (beam search, the default, or genetic search; the presets and the population / moves per stage / stages inputs only apply to the genetic one), Start/Stop (nothing starts by itself), stats, two charts (tiles left of the best attempt, then moves of the shortest solution once solved), the solution string, the replay link, and the `Records` bar (world / community / own best of that grid, from [components/records.tsx](../components/records.tsx)). |
+| [lib/solver/engines.ts](../lib/solver/engines.ts) | The engines as data: `ENGINE_PRESETS`, the option fields of each kind (`FIELDS`: label, hint, default), and `createEngine(kind, canva, options)`, which the worker and the benchmark both use. |
+| [lib/solver/benchGrids.ts](../lib/solver/benchGrids.ts) | The 13 fixed benchmark grids (`4x4:a` … `10x10:b`, seed `bench-<name>`). |
+| [app/solver/page.tsx](../app/solver/page.tsx) | Grid picker (benchmark grids, or a seed and a size, or the link's params), the grid, then two tabs. |
+| [app/solver/run.tsx](../app/solver/run.tsx) | **Run** tab: one engine on the grid, with an optional time limit, stats, two charts, the solution, the replay link. Posts to the-bot (never on benchmark grids). |
+| [app/solver/benchmark.tsx](../app/solver/benchmark.tsx) | **Benchmark** tab: tick grids and engines, a time per search, run them one after the other; table of moves (best of the row underlined, first solution and when, replay link per cell, average per engine), "Copy report". |
+| [app/solver/variants.tsx](../app/solver/variants.tsx) | The list of engine variants: pick (one, or several for the benchmark), rename, edit every option, duplicate, remove, reset. |
+| [app/solver/useSolverWorker.ts](../app/solver/useSolverWorker.ts) | One worker, a start cancels the previous run and its late messages are ignored. |
 
 ### Why a second copy of the rules
 
@@ -198,6 +204,8 @@ When the page reaches a solution shorter than the last one it sent, it calls `pu
 **Security: `NEXT_PUBLIC_` variables are inlined into the JavaScript sent to every visitor.** Set the key only in a local `.env.local` and run the page locally. If it is set in the environment of a deployed build, anyone can read the bot's secret key in the bundle.
 
 ### Benchmark and results
+
+Two ways to run it. The **Benchmark** tab of `/solver` runs any variant of any engine (every option editable, variants duplicable) on any of the grids, one search at a time on one worker, and shows a table with a text report to copy. The exact search only runs on grids of 25 tiles or less. Timings there are comparable with each other, not with the script, which runs in node on the engines flagged `reference` in [engines.ts](../lib/solver/engines.ts).
 
 `npm run solver:bench` ([bench.test.ts](../lib/solver/bench.test.ts), vitest, skipped unless `SOLVER_BENCH` is set, which the script does) runs every engine on a fixed set of grids (`generateRandomMatrix('bench-<name>', rows, cols)`) for `SOLVER_SECONDS` seconds each (default 10) and prints the moves of the best solution at the end and when the first one appeared. `SOLVER_GRIDS=8x8,10x10` and `SOLVER_ENGINES=beam,ga-staged` filter; `SOLVER_OUT=report.txt` also writes the report to a file, because vitest hides the console of passing tests. For grids up to 5×5 it also prints the optimum from `solveExact`.
 

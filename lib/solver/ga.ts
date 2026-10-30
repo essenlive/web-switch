@@ -36,6 +36,7 @@ export interface GAStats {
     solution: string;      // those moves, as in a replay link (`urdl`)
     averageTiles: number;
     done?: boolean;        // the search has nothing left to try (the GA never says so)
+    bound?: number;        // exact search only: when it gave up, every solution needs at least this many moves
 }
 
 // Plays moves (replay letters) and returns the ones that were accepted, or null if the grid is not won
