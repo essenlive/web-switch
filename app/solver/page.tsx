@@ -41,6 +41,7 @@ function SolverPage() {
     s: params.get('s') || '', cs: params.get('cs') || '', c: params.get('c') || '', t: '',
   }), [params])
 
+  const [engine, setEngine] = useState<'beam' | 'ga'>('beam')
   const [population, setPopulation] = useState(1500)
   const [length, setLength] = useState(60)
   const [stages, setStages] = useState(1)
@@ -63,9 +64,12 @@ function SolverPage() {
       }
       setStats(e.data)
       setHistory(h => [...h, e.data])
+      if (e.data.done) setRunning(false) // the beam has no wider round left
     }
     setStats(null); setHistory([])
-    worker.current.postMessage({ type: 'start', canva: input.canva, options: { population, length, maxStages: stages } } satisfies SolverRequest)
+    worker.current.postMessage((engine === 'beam'
+      ? { type: 'start', engine, canva: input.canva, options: {} }
+      : { type: 'start', engine, canva: input.canva, options: { population, length, maxStages: stages } }) satisfies SolverRequest)
     setRunning(true)
   }
 
@@ -113,7 +117,14 @@ function SolverPage() {
       <div className="flex flex-col gap-2 p-4 bg-background rounded-lg">
         <Chart label="Tiles left, best attempt" max={total} points={history.filter(s => !s.won).map(s => [s.generation, s.tiles])} />
         <Chart label="Moves, shortest solution" max={history.find(s => s.won)?.moves ?? 1} points={history.filter(s => s.won).map(s => [s.generation, s.moves])} />
-        {stats && <p className="text-xs text-muted-foreground">pass {stats.pass}, stage {stats.stage}</p>}
+        {stats && <p className="text-xs text-muted-foreground">{engine === 'beam' ? `round ${stats.pass}, layer ${stats.stage}` : `pass ${stats.pass}, stage ${stats.stage}`}</p>}
+        <label className="text-xs text-muted-foreground">Engine
+          <select value={engine} disabled={running} onChange={e => setEngine(e.target.value as 'beam' | 'ga')} className="w-full p-2 rounded-md border bg-background text-foreground">
+            <option value="beam">Beam search (pushes, doubling width)</option>
+            <option value="ga">Genetic search</option>
+          </select>
+        </label>
+        {engine === 'ga' && <>
         <label className="text-xs text-muted-foreground">Preset
           <select
             value={PRESETS.findIndex(p => p.population === population && p.length === length && p.stages === stages)}
@@ -136,6 +147,7 @@ function SolverPage() {
             <input type="number" min={1} max={100} step={1} value={stages} disabled={running} onChange={e => setStages(Math.max(1, Number(e.target.value)))} className="w-full p-2 rounded-md border bg-background text-foreground" />
           </label>
         </div>
+        </>}
         <div className="flex gap-2">
           {running
             ? <Button className="grow" onClick={stop}>Stop</Button>

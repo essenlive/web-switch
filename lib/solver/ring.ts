@@ -74,3 +74,15 @@ export function slotLetters(s: SimState, slot: number): string {
     }
     return text + MOVE_LETTERS[slotDirection(s, slot)];
 }
+
+// The slot at a ring cell, or the next one clockwise when the cell is a corner (the inverse of slotRing)
+export function ringSlot(s: SimState, index: number): number {
+    const { rows, cols } = s, C = cols + 1, R = rows + 1;
+    const P = 2 * C + 2 * R;
+    let r = index % P;
+    if (r === 0 || r === C || r === C + R || r === 2 * C + R) r = (r + 1) % P;
+    if (r <= cols) return r - 1;
+    if (r < C + R) return cols + (r - C - 1);
+    if (r < 2 * C + R) return cols + rows + (r - C - R - 1);
+    return 2 * cols + rows + (r - 2 * C - R - 1);
+}

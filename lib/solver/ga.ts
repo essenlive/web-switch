@@ -1,3 +1,4 @@
+import { applySlot, ringIndex, ringSize, ringSlot, slotLetters, walkDistance } from './ring';
 import { copyState, createState, isWon, MOVE_LETTERS, nearness, step, type SimState } from './simulate';
 
 // Staged genetic search for a short winning sequence of moves on one grid.
@@ -13,7 +14,8 @@ import { copyState, createState, isWon, MOVE_LETTERS, nearness, step, type SimSt
 
 export interface GAOptions {
     population?: number;   // genomes per generation, all stages
-    length?: number;       // moves per genome (a stage)
+    length?: number;       // genes per genome (a stage): moves, or pushes if `pushes`
+    pushes?: boolean;      // a gene is a push (a slot of the ring, given as a distance from the cursor, the walk is the shortest) instead of a single move
     beam?: number;         // positions kept between two stages
     generations?: number;  // generations per stage
     maxStages?: number;    // stages before a pass gives up and starts over
@@ -99,7 +101,25 @@ export function createGA(canva: number[][], options: GAOptions = {}) {
     const tileWeight = options.tileWeight ?? 8;
     const moveWeight = options.moveWeight ?? 1;
     const rand = mulberry32(options.seed ?? 1);
-    const randMove = () => Math.floor(rand() * 4);
+    const pushes = options.pushes ?? false;
+    // A push gene is a byte around 128, the signed distance along the ring from the cursor (small ones more likely)
+    const randMove = () => pushes ? 128 + Math.round((rand() + rand() - 1) * 127) : Math.floor(rand() * 4);
+
+    // Plays a gene. Returns the moves it cost, 0 if the game ignored it; `text` receives the letters when given.
+    function playGene(s: SimState, gene: number, out?: { text: string }): number {
+        if (!pushes) {
+            if (!step(s, gene)) return 0;
+            if (out) out.text += MOVE_LETTERS[gene];
+            return 1;
+        }
+        if (isWon(s)) return 0;
+        const P = ringSize(s);
+        const slot = ringSlot(s, ringIndex(s, s.x, s.y) + Math.round((gene - 128) / 128 * (P / 2)) + P);
+        const cost = walkDistance(s, slot) + 1;
+        if (out) out.text += slotLetters(s, slot);
+        applySlot(s, slot);
+        return cost;
+    }
 
     const root = createState(canva);
     const costOf = (s: SimState, near: number, moves: number) => s.rows * s.cols * tileWeight + near + moves * moveWeight;
@@ -136,8 +156,9 @@ export function createGA(canva: number[][], options: GAOptions = {}) {
         let bestCost = from.cost, used = 0, moves = 0, bestMoves = 0;
         let tiles = from.state.rows * from.state.cols, near = from.near;
         for (let i = 0; i < length; i++) {
-            if (!step(scratch, g[i])) continue;
-            moves++;
+            const cost = playGene(scratch, g[i]);
+            if (!cost) continue;
+            moves += cost;
             if (moves >= limit) { out.score = HOPELESS; out.won = false; out.used = used; out.moves = bestMoves; out.tiles = tiles; out.near = near; return; }
             if (isWon(scratch)) {
                 out.score = base + moves; out.used = i + 1; out.moves = moves; out.won = true;
@@ -175,7 +196,7 @@ export function createGA(canva: number[][], options: GAOptions = {}) {
             const pos = rand() < 0.5 ? Math.floor(rand() * Math.max(1, used)) : Math.min(length - 1, used + Math.floor(rand() * (length - used)));
             const kind = rand();
             if (kind < 0.45) {
-                g[pos] = (g[pos] + 1 + Math.floor(rand() * 3)) & 3; // a different move
+                g[pos] = pushes ? randMove() : (g[pos] + 1 + Math.floor(rand() * 3)) & 3; // a different move
             } else if (kind < 0.7) {
                 g.copyWithin(pos + 1, pos, length - 1); // insert
                 g[pos] = randMove();
@@ -214,9 +235,9 @@ export function createGA(canva: number[][], options: GAOptions = {}) {
     function movesOf(index: number) {
         const g = genomes[index];
         copyState(pool[starts[index]].state, scratch);
-        let text = '';
-        for (let i = 0; i < evals[index].used; i++) if (step(scratch, g[i])) text += MOVE_LETTERS[g[i]];
-        return text;
+        const out = { text: '' };
+        for (let i = 0; i < evals[index].used; i++) playGene(scratch, g[i], out);
+        return out.text;
     }
 
     function startPass() {
@@ -241,8 +262,9 @@ export function createGA(canva: number[][], options: GAOptions = {}) {
             if (kept.length >= beam || evals[i].score >= HOPELESS) break;
             copyState(pool[starts[i]].state, scratch);
             const g = genomes[i];
-            let text = '';
-            for (let j = 0; j < evals[i].used; j++) if (step(scratch, g[j])) text += MOVE_LETTERS[g[j]];
+            const out = { text: '' };
+            for (let j = 0; j < evals[i].used; j++) playGene(scratch, g[j], out);
+            const text = out.text;
             const key = keyOf(scratch);
             if (seen.has(key)) continue;
             seen.add(key);

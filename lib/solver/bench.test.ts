@@ -22,6 +22,7 @@ const GRIDS = [
 const ENGINES: Record<string, (canva: number[][]) => { step(): GAStats }> = {
   'ga-single': canva => createGA(canva, { population: 1500, length: 60, maxStages: 1 }),
   'ga-staged': canva => createGA(canva, { population: 1000, length: 50, maxStages: 30 }),
+  'ga-push': canva => createGA(canva, { population: 1000, length: 8, maxStages: 30, pushes: true }),
   'beam': canva => createBeam(canva),
 };
 

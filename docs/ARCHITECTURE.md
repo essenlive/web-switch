@@ -139,17 +139,32 @@ URL `?s=…&cs=WxH&t=true` (seed required). Clock starts at the first move attem
 |---|---|
 | [lib/solver/simulate.ts](../lib/solver/simulate.ts) | Allocation-free copy of the rules (`step`, `isWon`, `nearness`). No imports, so it runs in a worker and in node. |
 | [lib/solver/simulate.test.ts](../lib/solver/simulate.test.ts) | Plays thousands of random moves through both this simulator and the real machine, comparing grid, cursor, held tile, accepted/ignored and win after every move. |
+| [lib/solver/ring.ts](../lib/solver/ring.ts) | The cursor ring and its slots: `applySlot` (walk to a slot and push), `slotLetters`, `walkDistance`. See "Pushes instead of moves". |
 | [lib/solver/ga.ts](../lib/solver/ga.ts) | `createGA(canva, options).step()`: one generation per call, returns `GAStats`. Pure and seeded (mulberry32), same grid and seed give the same run. |
-| [lib/solver/ga.test.ts](../lib/solver/ga.test.ts) | `prune` keeps a winning solution winning, never longer, and is idempotent. |
+| [lib/solver/beam.ts](../lib/solver/beam.ts) | `createBeam(canva, options).step()`: one layer of a beam search over pushes per call, same `GAStats`. Deterministic. |
+| [lib/solver/exact.ts](../lib/solver/exact.ts) | `solveExact`: exhaustive shortest solution (or a lower bound) for small grids. Used to measure the others, not shipped in the page. |
+| [lib/solver/ga.test.ts](../lib/solver/ga.test.ts), [ring.test.ts](../lib/solver/ring.test.ts), [beam.test.ts](../lib/solver/beam.test.ts) | `prune`; ring numbering and walks played move by move; `solveExact` against a search over single moves; the beam's solution played in the real machine. |
+| [lib/solver/bench.test.ts](../lib/solver/bench.test.ts) | The benchmark (skipped unless asked, see below). |
 | [lib/solver/worker.ts](../lib/solver/worker.ts) | Web Worker: runs `step()` in 100 ms slices, posts the stats, keeps improving after a win until it receives `stop`. |
-| [app/solver/page.tsx](../app/solver/page.tsx) | Presets menu, population / moves per stage / stages inputs, Start/Stop (nothing starts by itself), stats, two charts (tiles left of the best attempt, then moves of the shortest solution once solved), the solution string, the replay link, and the `Records` bar (world / community / own best of that grid, from [components/records.tsx](../components/records.tsx)). |
-| [scripts/solver-bench.ts](../scripts/solver-bench.ts) | Headless benchmark (see below). |
+| [app/solver/page.tsx](../app/solver/page.tsx) | Engine menu (beam search, the default, or genetic search; the presets and the population / moves per stage / stages inputs only apply to the genetic one), Start/Stop (nothing starts by itself), stats, two charts (tiles left of the best attempt, then moves of the shortest solution once solved), the solution string, the replay link, and the `Records` bar (world / community / own best of that grid, from [components/records.tsx](../components/records.tsx)). |
 
 ### Why a second copy of the rules
 
 The machine clones its whole context on every action, far too slow for millions of moves. `simulate.ts` keeps a flat `Uint8Array` (row-major, row 0 at the bottom like `canva`), the cursor and the held tile, and mutates them in place. **It must stay identical to `switchMachine.ts` and `matrixHelpers.ts`**, quirks included (for example the cursor `y` or `x` is decremented for whichever row or column is removed, and rows are removed before columns, one per pass). The equivalence test is what keeps the two in sync: if you change a rule in the game, it fails until the simulator follows. Time challenge is out of scope (no growth, no `tick`).
 
-### How the search works
+### Pushes instead of moves (ring.ts)
+
+The cursor walks on a ring of `2 × (rows + cols) + 4` cells around the grid, and walking never changes the grid. So any list of moves is "walk, push, walk, push…", and the walk between two pushes can always be the shorter way round the ring without costing a move more. A **slot** is a ring cell that is not a corner (`2 × (rows + cols)` of them); `applySlot(state, slot)` teleports the cursor there and pushes, the cost being `walkDistance + 1`. Searching over slots loses no solution and drops every wasted cursor move; the tests check it (the optimum found over slots equals the one found by a search over single moves, and a slot played as letters gives the same position as `applySlot`).
+
+### Exact search (exact.ts)
+
+`solveExact` is a uniform-cost search over slots with every position remembered (`stateKey`, a 52-bit hash of grid, cursor and held tile), so the first win it pops is the optimum. It finishes on 4×4 and 5×5 in seconds, and gives up on bigger grids after `maxNodes` positions saying `lowerBound`. It is the yardstick of the benchmark.
+
+### Beam search (beam.ts)
+
+Layer by layer, every kept position is pushed in every slot; candidates are ranked with the same cost as the genetic search (`8 × tiles left + nearness + moves played`), deduplicated by `stateKey` (keeping the fewest moves), and the `width` cheapest make the next layer. A push that wins is pruned (`prune`) and kept if it is the shortest so far; a position that cannot beat the best solution is dropped. When a round has no layer left, the width doubles (25, 50, … 25 600) and the round starts again, then `done`. No randomness: same grid, same result. One `step()` is one layer, reported as `pass` = round and `stage` = layer.
+
+### How the genetic search works
 
 A **genome** is a fixed-length string of moves (0..3 = `u r d l`, the letters of a replay link). The game ignores a move it cannot play, so every genome is valid and needs no repair; only *accepted* moves count, and the solution string only contains those.
 
@@ -161,11 +176,13 @@ A **genome** is a fixed-length string of moves (0..3 = `u r d l`, the letters of
 
 **Operators.** Tournament selection of 3, elitism (2% of the population, at least 2). Single-point crossover, only between genomes that share the same starting position (a tail is meaningless from another position). Mutations keep the head and change what follows: a different move, insert, delete, or redo of 2–8 moves; half of them fall inside the used prefix, half in the tail.
 
-**Stages (beam of GAs).** One long genome is hard on 8×8, so the game can be solved `length` moves at a time. `maxStages = 1` is the plain GA instead: one stage that never ends by itself (`generations` is ignored), only a win restarts it.
+**Stages (beam of GAs).** One long genome is hard on 8×8, so the game can be solved `length` genes at a time. `maxStages = 1` is the plain GA instead: one stage that never ends by itself (`generations` is ignored), only a win restarts it.
 1. A *stage* evolves genomes from a pool of starting positions (the grid itself for stage 0) for `generations` generations. Genomes are spread round-robin over the pool.
 2. At the end of the stage, the best `beam` *distinct* positions reached (deduplicated by a hash of grid, cursor and held tile) become the pool of the next stage, each with the moves that lead to it.
 3. A win ends the *pass*. The next pass starts over from the grid and can only win with fewer moves than the best solution (longer attempts are scored `HOPELESS` and cut off early).
 4. A pass also starts over after 3 stages without progress or `maxStages` stages.
+
+**Push genes.** With `pushes: true` a gene is a push, not a move: a byte around 128 read as a signed distance along the ring from the cursor (small distances are the most likely), and `length` counts pushes. It gave worse results than plain moves with long stages, and about the same with short ones (6 to 10 pushes). It is kept as an option, not used by the page.
 
 **Pruning.** Every winning solution goes through `prune(canva, moves)` before it is kept: it repeatedly removes any run of 1 to 8 moves whose removal still wins with fewer moves (an `ud` in a side column, an `lr` along an edge…), until nothing can be cut. The GA is blind to these detours because the tail of a genome is free; pruning cleans them. `prune` replays moves on the simulator, so `GAStats.solution` is always a clean list of accepted moves.
 
@@ -182,23 +199,30 @@ When the page reaches a solution shorter than the last one it sent, it calls `pu
 
 ### Benchmark and results
 
-`scripts/solver-bench.ts` runs the search without the browser. Bundle it (`npx esbuild scripts/solver-bench.ts --bundle --platform=node --format=esm --outfile=bench.mjs`), then `GA='{"moveWeight":1}' node bench.mjs <seeds> <RxC> <generations> <population> <length>`. It prints the first-win generation, the final result and the average. `GA` is a JSON merged into the options.
+`npm run solver:bench` ([bench.test.ts](../lib/solver/bench.test.ts), vitest, skipped unless `SOLVER_BENCH` is set, which the script does) runs every engine on a fixed set of grids (`generateRandomMatrix('bench-<name>', rows, cols)`) for `SOLVER_SECONDS` seconds each (default 10) and prints the moves of the best solution at the end and when the first one appeared. `SOLVER_GRIDS=8x8,10x10` and `SOLVER_ENGINES=beam,ga-staged` filter; `SOLVER_OUT=report.txt` also writes the report to a file, because vitest hides the console of passing tests. For grids up to 5×5 it also prints the optimum from `solveExact`.
 
-Measured on four 8×8 grids (seeds `bench0`..`bench3`, population 1000, 50 moves per stage):
+Moves of the best solution after 10 s (one core, node):
 
-| Setup | Result |
-|---|---|
-| Single stage, 150 moves, population 400 | wins only some grids, slowly, about 100–140 moves |
-| Staged, ranked by tiles only (`moveWeight 0`) | wins everywhere within 76 generations (about 4 s), 126 moves on average |
-| Staged, `moveWeight 1` (default) | 99.5 moves on average |
+| Grid | Optimum | ga-single | ga-staged | ga-push | beam |
+|---|---|---|---|---|---|
+| 4×4 a / b | 10 / 13 | 10 / 13 | 10 / 13 | 10 / 13 | 10 / 13 |
+| 5×5 a / b | 18 / 18 | 18 / 19 | 18 / 18 | 18 / 18 | 18 / 18 |
+| 6×6 a / b / c | ? | 42 / 27 / 40 | 38 / 29 / 34 | 37 / 31 / 37 | **32 / 27 / 37** |
+| 8×8 a / b / c / d | ? | none | 96 / 95 / **59** / 81 | 105 / 90 / 77 / 68 | **78 / 78** / 66 / **61** |
+| 10×10 a / b | ? | none | none | none | **217 / 147** |
 
-`moveWeight 0.5` gives 106.5; 2 and above stall some grids (no win at all). Beam 300 and 30 generations per stage give the same result as the defaults. 6×6 is solved in seconds. These runs predate `prune` and the presets: the numbers behind the presets come from later `solver-bench` runs that are not recorded here. Not benchmarked yet: 10×10 and larger.
+- `ga-single`: population 1500, 60 moves, one stage (the page's first preset). `ga-staged`: 1000 / 50 moves / 30 stages. `ga-push`: 1000 / 8 pushes / 30 stages / `pushes`. `beam`: defaults.
+- Small grids are not a problem: every engine is within one move of the optimum.
+- From 6×6 up the beam is the best on average, finds a first solution in under 0.3 s even on 10×10, and is the only one that wins at all on 10×10 in 10 s. The genetic searches win some 8×8 grids by a few moves (8×8 c).
+- 10×10 solutions of 150 to 220 moves are certainly far from the optimum: the heuristic, not the time, is the limit there.
+- The staged genetic search on its own, before the beam existed, averaged 99.5 moves on four other 8×8 grids (`bench0..3`); a move weight of 1 in the ranking was the one parameter that mattered (0 gave 126, 2 and above stalled some grids).
 
 ### Known limits and ideas
 
-- Solutions are still long (around 100 moves on 8×8); the real minimum is unknown.
-- After the first win, later passes almost never find a shorter one. `prune` removes local detours, but a real polishing phase (a GA on the full solution seeded from the best one, with delete / insert / rewrite mutations) is still the likely next step.
-- `prune` is quadratic-ish (it replays the whole solution for each cut) and only looks at runs up to 8 moves; fine for solutions of a few hundred moves.
-- `nearness` is recomputed after every accepted move and is the main cost; it could be evaluated less often.
-- A bot score is indistinguishable from a human one for `scoreFromEvent` (only the nickname differs). It sits at the top of the world records of the grids it solved.
-- `MAX_MOVES = 500` caps what `scoreFromEvent` accepts, so a longer solution would be rejected.
+- Above 6×6 nobody knows the optimum, so there is no measure of the gap. A better exact search (an admissible bound on the moves left) would extend the yardstick.
+- Polishing: take the best solution and, for every window of 8 to 12 moves, search exhaustively for a shorter way to the same position (a generalisation of `prune`, which can only delete). Also restarts from a prefix of the best solution.
+- The heuristic (`nearness`) ignores the held tile and the walk to the useful slot. Improving it helps the beam most, and big grids most of all.
+- The beam keeps the cheapest positions only; it has no diversity. Keeping the best few of each kind of position (by tiles left, by lines near completion) is the usual fix.
+- `nearness` is recomputed from scratch for every candidate and is the main cost; a push changes one line (unless a line is removed), so it could be incremental. Several workers with different widths could share the best length.
+- `prune` is quadratic-ish and only looks at runs up to 8 moves.
+- A bot score is indistinguishable from a human one for `scoreFromEvent` (only the nickname differs). `MAX_MOVES = 500` caps what is accepted, so a longer solution would be rejected.

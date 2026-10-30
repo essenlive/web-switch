@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { generateRandomMatrix } from '../matrixHelpers';
 import { solveExact } from './exact';
-import { applySlot, ringCell, ringIndex, ringSize, slotCount, slotLetters, walkDistance } from './ring';
+import { applySlot, ringCell, ringIndex, ringSize, ringSlot, slotCount, slotLetters, slotRing, walkDistance } from './ring';
 import { cloneState, createState, isWon, MOVE_LETTERS, stateKey, step, type SimState } from './simulate';
 
 function lcg(seed: number) {
@@ -22,6 +22,14 @@ describe('ring', () => {
       }
       expect(seen.size).toBe(2 * (rows + cols) + 4);
     }
+  });
+});
+
+describe('ringSlot', () => {
+  it('inverts slotRing, and moves a corner on to the next slot', () => {
+    const s = createState(generateRandomMatrix('q', 4, 6));
+    for (let k = 0; k < slotCount(s); k++) expect(ringSlot(s, slotRing(s, k))).toBe(k);
+    for (const corner of [0, 7, 7 + 5, 2 * 7 + 5]) expect(ringSlot(s, corner)).toBe(ringSlot(s, corner + 1));
   });
 });
 
