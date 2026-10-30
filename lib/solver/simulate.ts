@@ -147,3 +147,13 @@ function cheapest(cells: Uint8Array, lines: number, len: number, stride: number,
     for (let i = 0; i < n - 1; i++) sum += costs[i];
     return sum;
 }
+
+// 52-bit key of a position (grid, cursor, held tile): two FNV hashes side by side. Collisions are negligible
+// below some millions of positions; a Map keyed by it is how the searches know they were here already.
+export function stateKey(s: SimState): number {
+    let h1 = 2166136261, h2 = 0x9747b28c;
+    const mix = (v: number) => { h1 = Math.imul(h1 ^ v, 16777619); h2 = Math.imul(h2 ^ v, 0x85ebca6b) ^ (h2 >>> 13); };
+    mix(s.rows); mix(s.cols); mix(s.x); mix(s.y); mix(s.held);
+    for (let i = 0; i < s.cells.length; i++) mix(s.cells[i]);
+    return (h1 >>> 0) * 2097152 + (h2 >>> 11);
+}

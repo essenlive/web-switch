@@ -6,7 +6,8 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "solver:bench": "SOLVER_BENCH=1 vitest run lib/solver/bench"
   },
   "dependencies": {
     "@radix-ui/react-dropdown-menu": "^2.2.1",
