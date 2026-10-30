@@ -42,7 +42,7 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 
 ## Solver
 
-A hidden page searches for a short solution of a grid, in the browser (genetic search in a Web Worker): open `/solver?s=abc&cs=8x8` (same params as a game). Nothing links to it. How it works, results and limits are in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#9-solver-hidden-page).
+A hidden page searches for a short solution of a grid, in the browser (genetic search in a Web Worker): open `/solver?s=abc&cs=8x8` (same params as a game) and press Start. Nothing links to it. With `NEXT_PUBLIC_BOT_NSEC` in `.env.local` (local use only, the variable is public), it publishes its best solutions as `the-bot`. How it works, results and limits are in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#9-solver-hidden-page).
 
 ## Todo
 

@@ -24,6 +24,7 @@ The board is `number[][]` (values 1–4, row 0 at the bottom of the display). Th
 | Social | [hooks/useCommunity.ts](../hooks/useCommunity.ts), [lib/communityStorage.ts](../lib/communityStorage.ts), [lib/links.ts](../lib/links.ts) | Nickname, friends (max 30, `MAX_FRIENDS`, so the key + friends transfer link fits one QR code), friend/key links. |
 | Leaderboard | [hooks/useCommunityScores.ts](../hooks/useCommunityScores.ts), [components/leaderboard.tsx](../components/leaderboard.tsx) | Subscribe, dedupe per pubkey, sort ascending. |
 | UI | [components/](../components) (`grid`, `score`, `endScreen`, `inputList`, `helpScreen`, …) | Presentational; props only, no machine access. |
+| Records | [components/records.tsx](../components/records.tsx) | World / community / own best of a grid with the owner's name; used by the score bar, `/replay` and `/solver` (reads the leaderboard hooks itself). |
 | Input | [hooks/use-controls.ts](../hooks/use-controls.ts) | Arrow keys, space, swipe → callbacks. |
 | Entry | [app/page.tsx](../app/page.tsx), [next.config.ts](../next.config.ts) | Home cards; `/daily` and `/julie` redirects. |
 | Solver | [lib/solver/](../lib/solver), [app/solver/page.tsx](../app/solver/page.tsx) | Hidden page that searches for a short winning move list. See section 9. |
@@ -132,15 +133,16 @@ URL `?s=…&cs=WxH&t=true` (seed required). Clock starts at the first move attem
 
 ## 9. Solver (hidden page)
 
-`/solver?s=…&cs=WxH` (or `c=…`, the same params as a game, no `t`) searches for a short winning move list in the browser. It is a tool, not a game mode: nothing links to it, the layout sets `robots: noindex`, and it never publishes anything to Nostr or touches highscores. The best solution is opened in `/replay` through the usual link (`/replay{url}&i={moves}`).
+`/solver?s=…&cs=WxH` (or `c=…`, the same params as a game, no `t`) searches for a short winning move list in the browser. It is a tool, not a game mode: nothing links to it, the layout sets `robots: noindex`, and it never touches the local highscores. The best solution is opened in `/replay` through the usual link (`/replay{url}&i={moves}`). It can also publish its best solution to the leaderboard as `the-bot` (see "Publishing as the-bot" below).
 
 | File | Role |
 |---|---|
 | [lib/solver/simulate.ts](../lib/solver/simulate.ts) | Allocation-free copy of the rules (`step`, `isWon`, `nearness`). No imports, so it runs in a worker and in node. |
 | [lib/solver/simulate.test.ts](../lib/solver/simulate.test.ts) | Plays thousands of random moves through both this simulator and the real machine, comparing grid, cursor, held tile, accepted/ignored and win after every move. |
 | [lib/solver/ga.ts](../lib/solver/ga.ts) | `createGA(canva, options).step()`: one generation per call, returns `GAStats`. Pure and seeded (mulberry32), same grid and seed give the same run. |
+| [lib/solver/ga.test.ts](../lib/solver/ga.test.ts) | `prune` keeps a winning solution winning, never longer, and is idempotent. |
 | [lib/solver/worker.ts](../lib/solver/worker.ts) | Web Worker: runs `step()` in 100 ms slices, posts the stats, keeps improving after a win until it receives `stop`. |
-| [app/solver/page.tsx](../app/solver/page.tsx) | Starts the worker, shows generation / tiles left / moves / status, a tiles-left chart, the solution string, Start/Stop and the replay link. |
+| [app/solver/page.tsx](../app/solver/page.tsx) | Presets menu, population / moves per stage / stages inputs, Start/Stop (nothing starts by itself), stats, two charts (tiles left of the best attempt, then moves of the shortest solution once solved), the solution string, the replay link, and the `Records` bar (world / community / own best of that grid, from [components/records.tsx](../components/records.tsx)). |
 | [scripts/solver-bench.ts](../scripts/solver-bench.ts) | Headless benchmark (see below). |
 
 ### Why a second copy of the rules
@@ -159,13 +161,24 @@ A **genome** is a fixed-length string of moves (0..3 = `u r d l`, the letters of
 
 **Operators.** Tournament selection of 3, elitism (2% of the population, at least 2). Single-point crossover, only between genomes that share the same starting position (a tail is meaningless from another position). Mutations keep the head and change what follows: a different move, insert, delete, or redo of 2–8 moves; half of them fall inside the used prefix, half in the tail.
 
-**Stages (beam of GAs).** One long genome is hopeless on 8×8, so the game is solved `length` moves at a time:
+**Stages (beam of GAs).** One long genome is hard on 8×8, so the game can be solved `length` moves at a time. `maxStages = 1` is the plain GA instead: one stage that never ends by itself (`generations` is ignored), only a win restarts it.
 1. A *stage* evolves genomes from a pool of starting positions (the grid itself for stage 0) for `generations` generations. Genomes are spread round-robin over the pool.
 2. At the end of the stage, the best `beam` *distinct* positions reached (deduplicated by a hash of grid, cursor and held tile) become the pool of the next stage, each with the moves that lead to it.
 3. A win ends the *pass*. The next pass starts over from the grid and can only win with fewer moves than the best solution (longer attempts are scored `HOPELESS` and cut off early).
 4. A pass also starts over after 3 stages without progress or `maxStages` stages.
 
-Defaults: population 1000, length 50, beam 100, generations 15, maxStages 30, tileWeight 8, moveWeight 1, seed 1. The page lets you change population and moves per stage.
+**Pruning.** Every winning solution goes through `prune(canva, moves)` before it is kept: it repeatedly removes any run of 1 to 8 moves whose removal still wins with fewer moves (an `ud` in a side column, an `lr` along an edge…), until nothing can be cut. The GA is blind to these detours because the tail of a genome is free; pruning cleans them. `prune` replays moves on the simulator, so `GAStats.solution` is always a clean list of accepted moves.
+
+Engine defaults: population 1000, length 50, beam 100, generations 15, maxStages 30, tileWeight 8, moveWeight 1, seed 1. The page starts from its first preset (population 1500, 60 moves, 1 stage) and offers others (staged 60 moves, staged fast for small grids 400 / 50, staged for large grids 1000 / 100, single stage 80 moves); editing a field switches the menu to "Custom". Fields are locked while running.
+
+### Publishing as the-bot
+
+When the page reaches a solution shorter than the last one it sent, it calls `publishBotScore(url, solution)` ([lib/nostr.ts](../lib/nostr.ts)). That function does nothing unless `NEXT_PUBLIC_BOT_NSEC` is set (an `nsec`, put in `.env.local`, which `.gitignore` excludes). Then it:
+1. replays the solution with `replay()` and drops it if it does not win;
+2. reads the bot's own published score for that grid and drops the solution unless it beats it (the event is replaceable, so a worse one would overwrite the best);
+3. publishes a normal score event (kind `30078`, nickname `the-bot`), identical to a human one. It then shows on the leaderboards and in the `Records` bars as the world record holder.
+
+**Security: `NEXT_PUBLIC_` variables are inlined into the JavaScript sent to every visitor.** Set the key only in a local `.env.local` and run the page locally. If it is set in the environment of a deployed build, anyone can read the bot's secret key in the bundle.
 
 ### Benchmark and results
 
@@ -179,12 +192,13 @@ Measured on four 8×8 grids (seeds `bench0`..`bench3`, population 1000, 50 moves
 | Staged, ranked by tiles only (`moveWeight 0`) | wins everywhere within 76 generations (about 4 s), 126 moves on average |
 | Staged, `moveWeight 1` (default) | 99.5 moves on average |
 
-`moveWeight 0.5` gives 106.5; 2 and above stall some grids (no win at all). Beam 300 and 30 generations per stage give the same result as the defaults. 6×6 is solved in seconds. Not benchmarked yet: 10×10 and larger.
+`moveWeight 0.5` gives 106.5; 2 and above stall some grids (no win at all). Beam 300 and 30 generations per stage give the same result as the defaults. 6×6 is solved in seconds. These runs predate `prune` and the presets: the numbers behind the presets come from later `solver-bench` runs that are not recorded here. Not benchmarked yet: 10×10 and larger.
 
 ### Known limits and ideas
 
 - Solutions are still long (around 100 moves on 8×8); the real minimum is unknown.
-- After the first win, later passes almost never find a shorter one. A polishing phase (a GA on the full solution seeded from the best one, with delete / insert / rewrite mutations) is the likely next step.
+- After the first win, later passes almost never find a shorter one. `prune` removes local detours, but a real polishing phase (a GA on the full solution seeded from the best one, with delete / insert / rewrite mutations) is still the likely next step.
+- `prune` is quadratic-ish (it replays the whole solution for each cut) and only looks at runs up to 8 moves; fine for solutions of a few hundred moves.
 - `nearness` is recomputed after every accepted move and is the main cost; it could be evaluated less often.
-- The chart is flat after the first win, because the headline stays on the best solution.
-- The solver says nothing about the leaderboard: a solver-found list is a valid score for `scoreFromEvent`, nothing in the app tells it apart from a human one.
+- A bot score is indistinguishable from a human one for `scoreFromEvent` (only the nickname differs). It sits at the top of the world records of the grids it solved.
+- `MAX_MOVES = 500` caps what `scoreFromEvent` accepts, so a longer solution would be rejected.
