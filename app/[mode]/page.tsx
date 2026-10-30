@@ -122,7 +122,7 @@ export default function Page() {
   });
   
 
-  const title = `${snapshot.context.timerMode ? "Time challenge" : mode === "g" ? "Daily" : mode === "r" ? "Random" : "Shared"} grid ${cs || "6x8"}`
+  const title = `${snapshot.context.timerMode ? "Time challenge" : mode === "g" ? "Daily" : mode === "r" ? "Random" : "Shared"} grid ${cs || "6x8"}${s ? ` · ${s}` : ""}`
   // Score bar shows the best as moves, or as the smallest area reached if it was a lost game
   const highscoreLabel = localHighscore === null ? null : localHighscore < 1000 ? localHighscore : `${Math.floor(localHighscore / 1000)} tiles`
 
@@ -164,6 +164,7 @@ export default function Page() {
           restart={restart}
           score={snapshot.context.score}
           highscore={highscoreLabel}
+          url={url}
           growIn={timer ? Math.ceil(Math.max(0, growMs(snapshot.context.canva) - (elapsed - snapshot.context.clockBase)) / 1000) : null}
         />
       </div>

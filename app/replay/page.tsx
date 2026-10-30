@@ -8,6 +8,7 @@ import { Pause, Play, RotateCcw, StepBack, StepForward } from 'lucide-react'
 import { Grid } from '@/components/grid'
 import { InputList } from '@/components/inputList'
 import { ReplayChart } from '@/components/replayChart'
+import { Records } from '@/components/records'
 import { Button } from '@/components/ui/button'
 import { buildFrames, parseReplayInput } from '@/lib/replay'
 
@@ -80,11 +81,13 @@ function ReplayPage() {
         <>
           <div className="grow flex flex-col p-4 bg-background rounded-lg">
             <h2 className="text-sm font-bold text-muted-foreground">
-              Replay of grid {new URLSearchParams(request!.query).get('cs')}
+              Replay of grid {new URLSearchParams(request!.query).get('cs')}{new URLSearchParams(request!.query).get('s') && ` · ${new URLSearchParams(request!.query).get('s')}`}
               {frame.status !== 'playing' && ` · ${frame.status === 'won' ? 'solved' : 'outgrown'}`}
             </h2>
             <Grid className="" canva={frame.canva} canvaIndexes={frame.canvaIndexes} cursor={frame.cursor} lastMove={frame.move} moveId={index} />
           </div>
+
+          <Records url={request!.query} className="justify-around p-3 bg-background rounded-lg" />
 
           {playError && <p role="alert" className="p-3 text-sm bg-background rounded-lg text-destructive">{playError} The replay stops at move {last}.</p>}
 
