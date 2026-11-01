@@ -15,13 +15,14 @@ export interface Step {
 }
 
 // The guided steps of a section. Going forward plays the animation of the step; anywhere else jumps to its end.
-export function useStepper(id: string, steps: Step[]) {
+// `refresh` is what the grid shows when the section comes back into view (by default: the current step)
+export function useStepper(id: string, steps: Step[], refresh?: () => void) {
   const stage = useStage()
   const [index, setIndex] = useState(0)
   const token = useRef(0)
   const latest = useRef({ steps, index })
   useEffect(() => { latest.current = { steps, index } })
-  useSectionRefresh(id, () => latest.current.steps[latest.current.index]?.show())
+  useSectionRefresh(id, refresh ?? (() => latest.current.steps[latest.current.index]?.show()))
   const go = useCallback(async (k: number, forward: boolean) => {
     const list = latest.current.steps
     if (k < 0 || k >= list.length) return

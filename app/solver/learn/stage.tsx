@@ -1,9 +1,9 @@
 'use client'
 
-import { createContext, useContext, useEffect, useRef, useSyncExternalStore } from 'react'
+import { createContext, useContext, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { slotLetters } from '@/lib/solver/ring'
 import { cloneState, evaluate, isWon, MOVE_LETTERS, step, type Line, type SimState } from '@/lib/solver/simulate'
-import { uniformLines } from '@/lib/solver/trace'
+import { decompose, uniformLines } from '@/lib/solver/trace'
 
 // The grid that stays next to the text. Every section drives it through show() and the animated plays;
 // the board component only draws what this object says.
@@ -113,6 +113,14 @@ export class Stage {
     })
   }
 
+  // Replays a list of moves from the start, action by action (walk and push)
+  playLetters(canva: number[][], letters: string, start: SimState, o: ShowOptions = {}): Promise<void> {
+    return this.holdWhile(async () => {
+      this.show(start, o); await wait(250)
+      for (const a of decompose(canva, letters)) { await this.playAction(a.slot); await wait(180) }
+    })
+  }
+
   // Sections register what they show; the page asks for it when the section comes to the middle of the screen
   register(id: string, refresh: () => void) { this.sections.set(id, refresh); return () => { this.sections.delete(id) } }
   activate(id: string) {
@@ -128,6 +136,18 @@ export function useStage() {
   const stage = useContext(StageContext)
   if (!stage) throw new Error('useStage outside of the learn page')
   return stage
+}
+// Calls `tick` every `ms` while playing; tick returns false when there is nothing left to play
+export function usePlayer(tick: () => boolean, ms: number) {
+  const [playing, setPlaying] = useState(false)
+  const latest = useRef(tick)
+  useEffect(() => { latest.current = tick })
+  useEffect(() => {
+    if (!playing) return
+    const id = setInterval(() => { if (!latest.current()) setPlaying(false) }, ms)
+    return () => clearInterval(id)
+  }, [playing, ms])
+  return { playing, start: () => setPlaying(true), stop: () => setPlaying(false) }
 }
 export function useBoard() {
   const stage = useStage()

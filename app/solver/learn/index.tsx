@@ -4,11 +4,14 @@ import { useEffect, useState } from 'react'
 import { createState } from '@/lib/solver/simulate'
 import { BoardView } from './board'
 import { CANVA } from './data'
+import { Beam } from './sections/beam'
+import { Cost } from './sections/cost'
+import { Exact } from './sections/exact'
 import { Overview } from './sections/overview'
 import { Terrain } from './sections/terrain'
 import { Stage, StageProvider } from './stage'
 
-const NAV = [['overview', 'Overview'], ['terrain', 'Terrain']]
+const NAV = [['overview', 'Overview'], ['terrain', 'Terrain'], ['cost', 'Cost'], ['exact', 'Exact'], ['beam', 'Beam']]
 
 // /solver without parameters: how the solvers work, followed on one example grid kept next to the text
 export default function LearnPage() {
@@ -45,6 +48,9 @@ export default function LearnPage() {
           </header>
           <Overview />
           <Terrain />
+          <Cost />
+          <Exact />
+          <Beam />
         </div>
       </div>
     </StageProvider>
