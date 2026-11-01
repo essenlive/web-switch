@@ -3,24 +3,27 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { nip19 } from 'nostr-tools';
-import { Clapperboard, Trash2, UserMinus, UserPlus } from 'lucide-react';
+import { ChevronRight, Clapperboard, Trash2, UserMinus, UserPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useCommunity } from '@/hooks/useCommunity';
 import { useCommunityScores } from '@/hooks/useCommunityScores';
 import { formatRank, type CommunityScore } from '@/lib/scoreEvent';
 import { replayLink } from '@/lib/replay';
 
-const iconBtn = 'inline-flex shrink-0 cursor-pointer rounded-sm p-1 text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';
+// relative z-10: stays clickable above the stretched link of a leaderboard that has an `href`
+const iconBtn = 'relative z-10 inline-flex shrink-0 cursor-pointer rounded-sm p-1 text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';
 
-export function Leaderboard({ url, all, isLoading }: { url: string; all: CommunityScore[]; isLoading: boolean }) {
+// With `href`, the whole card leads there (a stretched link behind the scores; their own buttons and links stay usable)
+export function Leaderboard({ url, all, isLoading, href }: { url: string; all: CommunityScore[]; isLoading: boolean; href?: string }) {
   const { nickname, following, myPubkey, addFollowing, removeFollowing, removeHighscore } = useCommunity();
   const scores = all.filter(s => s.url === url);
   const [removedUrl, setRemovedUrl] = useState<string | null>(null); // the relays do not echo our own removal back
 
   return (
-    <div className="flex flex-col gap-3 p-4 bg-background rounded-lg">
+    <div className="relative flex flex-col gap-3 p-4 bg-background rounded-lg">
+      {href && <Link href={href} aria-label="Open the leaderboard of this puzzle" className="absolute inset-0 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />}
       {!nickname && (
-        <p><Link href="/community" className="underline font-bold">Pick a nickname</Link> to publish your scores.</p>
+        <p><Link href="/community" className="relative z-10 underline font-bold">Pick a nickname</Link> to publish your scores.</p>
       )}
       {isLoading ? <p>Loading…</p> : scores.length === 0 ? <p>No scores for this grid yet.</p> : (
         <ol className="flex flex-col gap-1">
@@ -57,11 +60,12 @@ export function Leaderboard({ url, all, isLoading }: { url: string; all: Communi
           })}
         </ol>
       )}
+      {href && <p aria-hidden className="flex items-center justify-end text-sm text-muted-foreground">Full leaderboard <ChevronRight size={16} /></p>}
     </div>
   );
 }
 
-// Self-contained version with its own My community / World toggle, for the end screen
+// Self-contained version with its own My community / World toggle, for the end screen; it opens the puzzle's page on the leaderboard
 export function ScopedLeaderboard({ url }: { url: string }) {
   const { nickname, following, myPubkey } = useCommunity();
   const [world, setWorld] = useState(false);
@@ -73,7 +77,7 @@ export function ScopedLeaderboard({ url }: { url: string }) {
         <Button variant={world ? 'outline' : 'default'} onClick={() => setWorld(false)}>My community</Button>
         <Button variant={world ? 'default' : 'outline'} onClick={() => setWorld(true)}>World</Button>
       </div>
-      <Leaderboard url={url} all={scores} isLoading={isLoading} />
+      <Leaderboard url={url} all={scores} isLoading={isLoading} href={`/leaderboard?u=${encodeURIComponent(url)}`} />
     </div>
   );
 }
