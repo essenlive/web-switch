@@ -1,6 +1,7 @@
 'use client'
 
 import { Suspense, useMemo, useState } from 'react'
+import dynamic from 'next/dynamic'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Grid } from '@/components/grid'
 import { Records } from '@/components/records'
@@ -13,7 +14,10 @@ import { freshVariants } from './variants'
 
 const field = 'w-full p-2 rounded-md border bg-background text-foreground'
 
-function SolverPage() {
+// The explanation (/solver alone) is loaded only when asked for
+const Learn = dynamic(() => import('./learn'), { loading: () => <p className="p-4">Loading…</p> })
+
+function SolverTool() {
   const params = useSearchParams()
   const router = useRouter()
   const [tab, setTab] = useState<'run' | 'benchmark'>('run')
@@ -79,6 +83,12 @@ function SolverPage() {
       </div>
     </div>
   )
+}
+
+// With a grid in the link: the tool. Without: how the solvers work.
+function SolverPage() {
+  const params = useSearchParams()
+  return params.toString() ? <SolverTool /> : <Learn />
 }
 
 export default function Page() {

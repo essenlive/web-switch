@@ -1,0 +1,4 @@
+/* the only things Tailwind classes cannot say: a keyframe */
+.flash { animation: pulse 0.5s ease-in-out 1; outline: 3px solid hsl(var(--foreground)); outline-offset: -3px; border-radius: 4px; }
+@keyframes pulse { 50% { transform: scale(0.82); opacity: 0.6; } }
+@media (prefers-reduced-motion: reduce) { .flash { animation: none; } }
