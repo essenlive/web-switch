@@ -133,6 +133,8 @@ URL `?s=…&cs=WxH&t=true` (seed required). Clock starts at the first move attem
 
 ## 9. Solver (hidden page)
 
+A longer walkthrough of each method, with worked examples and diagrams, is in [SOLVER.md](SOLVER.md) (in French).
+
 `/solver?s=…&cs=WxH` (or `c=…`, the same params as a game, no `t`) searches for a short winning move list in the browser. Without params it opens on a picker of the benchmark grids. It is a tool, not a game mode: nothing links to it, the layout sets `robots: noindex`, and it never touches the local highscores. The best solution is opened in `/replay` through the usual link (`/replay{url}&i={moves}`). It can also publish its best solution to the leaderboard as `the-bot` (see "Publishing as the-bot" below).
 
 | File | Role |
