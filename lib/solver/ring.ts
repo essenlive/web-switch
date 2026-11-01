@@ -60,6 +60,15 @@ export function applySlot(s: SimState, slot: number): boolean {
     return step(s, slotDirection(s, slot));
 }
 
+// The ring cells the cursor crosses to reach the slot (shorter way round), start and arrival included
+export function walkPath(s: SimState, slot: number): number[] {
+    const P = ringSize(s), from = ringIndex(s, s.x, s.y), to = slotRing(s, slot);
+    const forward = (to - from + P) % P, clockwise = forward <= P - forward;
+    const path = [from];
+    for (let n = clockwise ? forward : P - forward, index = from; n > 0; n--) { index = (index + (clockwise ? 1 : P - 1)) % P; path.push(index); }
+    return path;
+}
+
 // The moves of that walk and push, as replay letters
 export function slotLetters(s: SimState, slot: number): string {
     const P = ringSize(s), from = ringIndex(s, s.x, s.y), to = slotRing(s, slot);

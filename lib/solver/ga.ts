@@ -1,5 +1,5 @@
 import { applySlot, ringIndex, ringSize, ringSlot, slotLetters, walkDistance } from './ring';
-import { copyState, createState, isWon, MOVE_LETTERS, nearness, step, type SimState } from './simulate';
+import { cloneState, copyState, createState, isWon, MOVE_LETTERS, nearness, step, type SimState } from './simulate';
 
 // Staged genetic search for a short winning sequence of moves on one grid.
 //
@@ -23,6 +23,18 @@ export interface GAOptions {
     elite?: number;        // genomes kept as they are
     tileWeight?: number;   // cost of a tile left on the grid...
     moveWeight?: number;   // ...and of a move played, against one tile off its line (see nearness)
+    onGeneration?: (snapshot: GASnapshot) => void; // the population of each generation, for the pages that show it
+}
+
+// What a generation looked like when it was reported (before a stage ends and the pool changes)
+export interface GASnapshot {
+    generation: number;
+    stage: number;
+    pass: number;
+    stageGeneration: number;
+    won: boolean;
+    pool: { state: SimState; moves: string; near: number; cost: number }[]; // the positions the stage started from
+    top: { genome: string; used: number; tiles: number; near: number; moves: number; won: boolean; score: number; start: number }[]; // best genomes (moves only; empty text for push genes)
 }
 
 export interface GAStats {
@@ -283,6 +295,17 @@ export function createGA(canva: number[][], options: GAOptions = {}) {
         rank();
     }
 
+    function snapshot(count: number): GASnapshot {
+        return {
+            generation, stage, pass, stageGeneration, won: best !== null,
+            pool: pool.map(p => ({ state: cloneState(p.state), moves: p.moves, near: p.near, cost: p.cost })),
+            top: order.slice(0, count).map(i => ({
+                genome: pushes ? '' : Array.from(genomes[i], g => MOVE_LETTERS[g]).join(''),
+                used: evals[i].used, tiles: evals[i].tiles, near: evals[i].near, moves: evals[i].moves, won: evals[i].won, score: evals[i].score, start: starts[i],
+            })),
+        };
+    }
+
     return {
         // One generation. The first call reports generation 0, the random population.
         step(): GAStats {
@@ -302,6 +325,7 @@ export function createGA(canva: number[][], options: GAOptions = {}) {
             let total = 0;
             for (let i = 0; i < population; i++) total += evals[i].tiles;
             const averageTiles = total / population;
+            if (options.onGeneration) options.onGeneration(snapshot(8));
             if (stageGeneration >= stageGenerations || evals[top].won) endStage();
             return best
                 ? { generation, pass: reportedPass, stage: reportedStage, won: true, tiles: best.tiles, near: 0, moves: best.moves.length, solution: best.moves, averageTiles }

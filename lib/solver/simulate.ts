@@ -51,7 +51,10 @@ function removeColumn(s: SimState, c: number) {
 }
 
 // Same order as the machine: win check, then the first uniform row, else the first uniform column, then again
-function evaluate(s: SimState) {
+export interface Line { kind: 'row' | 'col'; index: number }
+
+// `removed` receives the lines taken out, in order (for the pages that show them)
+export function evaluate(s: SimState, removed?: Line[]) {
     for (;;) {
         if (isWon(s)) return;
         const { rows, cols, cells } = s;
@@ -63,6 +66,7 @@ function evaluate(s: SimState) {
             if (same) line = r;
         }
         if (line >= 0) {
+            removed?.push({ kind: 'row', index: line });
             removeRow(s, line);
             if (s.y !== 0) s.y--; // the machine does this whichever row went
             continue;
@@ -74,13 +78,15 @@ function evaluate(s: SimState) {
             if (same) line = c;
         }
         if (line < 0) return;
+        removed?.push({ kind: 'col', index: line });
         removeColumn(s, line);
         if (s.x !== 0) s.x--;
     }
 }
 
 // Plays one move in place. Returns false when the game would ignore it (the state is untouched).
-export function step(s: SimState, dir: number): boolean {
+// `skipEvaluate` stops before the uniform lines are removed, to show them first; call evaluate() after.
+export function step(s: SimState, dir: number, removed?: Line[], skipEvaluate = false): boolean {
     const { rows, cols, cells } = s;
     if (isWon(s)) return false;
     if ((s.y <= 0 && dir === DOWN) || (s.y >= rows + 1 && dir === UP) || (s.x <= 0 && dir === LEFT) || (s.x >= cols + 1 && dir === RIGHT)) return false;
@@ -118,7 +124,7 @@ export function step(s: SimState, dir: number): boolean {
         }
         s.held = out;
     }
-    evaluate(s);
+    if (!skipEvaluate) evaluate(s, removed);
     return true;
 }
 
@@ -156,4 +162,25 @@ export function stateKey(s: SimState): number {
     mix(s.rows); mix(s.cols); mix(s.x); mix(s.y); mix(s.held);
     for (let i = 0; i < s.cells.length; i++) mix(s.cells[i]);
     return (h1 >>> 0) * 2097152 + (h2 >>> 11);
+}
+
+// The same cost as nearness(), line by line, for the pages that explain it:
+// each row and column with its cost, which orientation wins, and which lines are the ones counted.
+export interface NearnessDetail { rowCosts: number[]; colCosts: number[]; rowsSum: number; colsSum: number; useRows: boolean; kept: number[]; value: number }
+export function nearnessDetail(s: SimState): NearnessDetail {
+    const costOf = (lines: number, len: number, stride: number, offset: number) => {
+        const out: number[] = [];
+        for (let l = 0; l < lines; l++) {
+            const c = [0, 0, 0, 0, 0];
+            for (let k = 0; k < len; k++) c[s.cells[l * offset + k * stride]]++;
+            out.push(len - Math.max(c[1], c[2], c[3], c[4]));
+        }
+        return out;
+    };
+    const rowCosts = costOf(s.rows, s.cols, 1, s.cols), colCosts = costOf(s.cols, s.rows, s.cols, 1);
+    const sum = (costs: number[]) => [...costs].sort((a, b) => a - b).slice(0, costs.length - 1).reduce((a, b) => a + b, 0);
+    const rowsSum = sum(rowCosts), colsSum = sum(colCosts), useRows = rowsSum <= colsSum;
+    const costs = useRows ? rowCosts : colCosts;
+    const kept = costs.map((c, i) => [c, i]).sort((p, q) => p[0] - q[0] || p[1] - q[1]).slice(0, costs.length - 1).map(p => p[1]);
+    return { rowCosts, colCosts, rowsSum, colsSum, useRows, kept, value: Math.min(rowsSum, colsSum) };
 }
