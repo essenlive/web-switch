@@ -1,5 +1,6 @@
 import { benchGrid } from '@/lib/solver/benchGrids'
 import { solveExact } from '@/lib/solver/exact'
+import { isWon, nearness, type SimState } from '@/lib/solver/simulate'
 import { decompose, exactTrace, framesOf } from '@/lib/solver/trace'
 
 // The one example grid of the page: 4x4:a, small enough for the exact search to be shown whole.
@@ -15,3 +16,4 @@ export const EXACT = exactTrace(CANVA)                  // the whole exact searc
 // The same costs as the beam search and the genetic search
 export const TILE_WEIGHT = 8
 export const MOVE_WEIGHT = 1
+export const cost = (s: SimState, moves: number) => s.rows * s.cols * TILE_WEIGHT + (isWon(s) ? 0 : nearness(s)) + moves * MOVE_WEIGHT

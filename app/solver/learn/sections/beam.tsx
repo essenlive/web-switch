@@ -92,7 +92,7 @@ export function Beam() {
         </div>
         <input type="range" min={1} max={t.layers.length} value={L} aria-label="Layer" onChange={e => manual(W, Number(e.target.value))} className="w-full accent-foreground" />
         <p aria-live="polite"><strong>Layer {L}</strong> of {t.layers.length}. {plural(ly.from, 'kept position')} pushed into all their cells ({SLOTS} at the start, fewer once a line has disappeared): {plural(ly.tried + ly.pruned, 'push', 'pushes')}
-          {ly.pruned ? `, of which ${ly.pruned} dropped (they can no longer beat the best solution)` : ''}. {ly.dupes} give a position already met, {ly.candidates} are new{win ? `, ${plural(ly.wins.length, 'wins', 'win')}` : ''}. {kept.length ? <>The <strong>{kept.length}</strong> cheapest are kept.</> : 'Nothing left to keep.'}</p>
+          {ly.pruned ? `, of which ${ly.pruned} dropped (they can no longer beat the best solution)` : ''}. {ly.dupes} give a position already met, {ly.candidates} are new{win ? `, ${plural(ly.wins.length, 'push wins', 'pushes win')}` : ''}. {kept.length ? <>The <strong>{kept.length}</strong> cheapest are kept.</> : 'Nothing left to keep.'}</p>
         {kept.length > 0 && <>
           <p className="text-sm text-muted-foreground">Kept positions, from the cheapest to the most expensive. Click one to see it on the grid.</p>
           <MiniGrid>

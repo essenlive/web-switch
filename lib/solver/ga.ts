@@ -81,7 +81,7 @@ const NOT_WON = 1_000_000;
 const HOPELESS = 2_000_000;
 const STALE_STAGES = 3; // stages in a row without progress before a pass starts over
 
-function mulberry32(seed: number) {
+export function mulberry32(seed: number) {
     let a = seed >>> 0;
     return () => {
         a = (a + 0x6d2b79f5) >>> 0;

@@ -7,11 +7,12 @@ import { CANVA } from './data'
 import { Beam } from './sections/beam'
 import { Cost } from './sections/cost'
 import { Exact } from './sections/exact'
+import { Genetic } from './sections/genetic'
 import { Overview } from './sections/overview'
 import { Terrain } from './sections/terrain'
 import { Stage, StageProvider } from './stage'
 
-const NAV = [['overview', 'Overview'], ['terrain', 'Terrain'], ['cost', 'Cost'], ['exact', 'Exact'], ['beam', 'Beam']]
+const NAV = [['overview', 'Overview'], ['terrain', 'Terrain'], ['cost', 'Cost'], ['exact', 'Exact'], ['beam', 'Beam'], ['genetic', 'Genetic']]
 
 // /solver without parameters: how the solvers work, followed on one example grid kept next to the text
 export default function LearnPage() {
@@ -51,6 +52,7 @@ export default function LearnPage() {
           <Cost />
           <Exact />
           <Beam />
+          <Genetic />
         </div>
       </div>
     </StageProvider>

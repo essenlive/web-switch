@@ -6,13 +6,12 @@ import { ringIndex, ringSlot, slotDirection, walkDistance } from '@/lib/solver/r
 import { isWon, nearness, nearnessDetail } from '@/lib/solver/simulate'
 import { Button } from '@/components/ui/button'
 import { Tile } from './tile'
-import { MOVE_WEIGHT, TILE_WEIGHT } from './data'
+import { cost } from './data'
 import { useBoard, useStage } from './stage'
 import styles from './learn.module.css'
 
 const ARROWS = ['↑', '→', '↓', '←']
 const DIRECTIONS = ['up', 'right', 'down', 'left']
-export const cost = (s: Parameters<typeof nearness>[0], moves: number) => s.rows * s.cols * TILE_WEIGHT + (isWon(s) ? 0 : nearness(s)) + moves * MOVE_WEIGHT
 
 // The example grid, kept next to the text: on a wide screen a column on the right, on a narrow one a band at the top
 export function BoardView() {
