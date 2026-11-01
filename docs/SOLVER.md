@@ -16,6 +16,8 @@ Sommaire
 
 ---
 
+Une version interactive de ce document existe : [explainer/solveur-switch.html](explainer/solveur-switch.html), un fichier HTML autonome (il se lance dans le navigateur, sans serveur). Il suit les quatre méthodes pas à pas sur la grille `4x4:a`, affichée à côté du texte. Son moteur est un port JavaScript de `lib/solver/`, comparé au code du dépôt (mêmes positions, mêmes solutions) ; c'est un prototype de ce que pourrait montrer la page `/solver` sans paramètre.
+
 ## 1. Vue d'ensemble
 
 ```mermaid

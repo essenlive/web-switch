@@ -1,0 +1,1642 @@
+<title>Le solveur de switch</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap">
+<style>
+/* Une page de jeu de poche : les plateaux du jeu (blanc ou noir) posés sur un fond gris-bleu, quatre tuiles à formes distinctes. */
+:root {
+  --page: #f3f4f6; --tray: #ffffff; --soft: #f4f4f5; --ink: #0a0a0a; --muted: #5f5f66; --hair: #e5e5e5; --line: #c9c9cf;
+  --t1: #ef4444; --t2: #3b82f6; --t3: #22c55e; --t4: #eab308;
+  --i1: #ffffff; --i2: #ffffff; --i3: #052e16; --i4: #111827;
+  --font: 'Nunito', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  --radius: 8px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --page: #101828; --tray: #0a0a0a; --soft: #171717; --ink: #fafafa; --muted: #a1a1aa; --hair: #262626; --line: #3f3f46;
+    --t1: #dc2626; --t2: #2563eb; --t3: #16a34a; --t4: #ca8a04; --i3: #f0fdf4; --i4: #111827; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --page: #101828; --tray: #0a0a0a; --soft: #171717; --ink: #fafafa; --muted: #a1a1aa; --hair: #262626; --line: #3f3f46;
+  --t1: #dc2626; --t2: #2563eb; --t3: #16a34a; --t4: #ca8a04; --i3: #f0fdf4; --i4: #111827; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  background: var(--page); color: var(--ink); font-family: var(--font); font-size: 16px; line-height: 1.55;
+  padding-block: 20px 56px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.wrap { max-width: 720px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
+h1, h2, h3 { text-wrap: balance; line-height: 1.2; margin: 0; }
+h1 { font-size: clamp(1.7rem, 6vw, 2.3rem); font-weight: 800; letter-spacing: -0.01em; }
+h2 { font-size: 1.3rem; font-weight: 800; }
+h3 { font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+p { margin: 0; max-width: 65ch; }
+.lead { font-size: 1.1rem; color: var(--muted); }
+a { color: inherit; text-underline-offset: 3px; }
+code, .mono { font-family: var(--mono); font-size: 0.88em; }
+:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+
+.nav { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: thin; }
+.nav a { flex: none; padding: 6px 12px; border-radius: 999px; background: var(--tray); border: 1px solid var(--hair); text-decoration: none; font-size: 0.88rem; font-weight: 700; }
+.nav a:hover { border-color: var(--ink); }
+
+.tray { background: var(--tray); border-radius: var(--radius); padding: 18px 16px; display: flex; flex-direction: column; gap: 14px; min-width: 0; scroll-margin-top: 12px; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.grow { flex: 1 1 auto; }
+.muted { color: var(--muted); }
+.small { font-size: 0.86rem; }
+.sub { padding-top: 12px; border-top: 1px solid var(--hair); display: flex; flex-direction: column; gap: 10px; }
+
+button, select, input[type=text] { font: inherit; color: inherit; }
+.btn { font-weight: 700; font-size: 0.9rem; padding: 8px 14px; border-radius: 6px; border: 1px solid var(--line); background: var(--tray); cursor: pointer; min-height: 38px; }
+.btn:hover:not(:disabled) { border-color: var(--ink); }
+.btn.primary { background: var(--ink); color: var(--tray); border-color: var(--ink); }
+.btn:disabled { opacity: 0.45; cursor: default; }
+.btn[aria-pressed="true"] { background: var(--ink); color: var(--tray); border-color: var(--ink); }
+select { padding: 8px 10px; border-radius: 6px; border: 1px solid var(--line); background: var(--tray); min-height: 38px; }
+input[type=range] { accent-color: var(--ink); width: 100%; }
+label.field { display: flex; flex-direction: column; gap: 2px; font-size: 0.82rem; color: var(--muted); font-weight: 600; min-width: 0; }
+.check { display: flex; align-items: center; gap: 8px; font-size: 0.9rem; font-weight: 600; }
+.check input { accent-color: var(--ink); width: 18px; height: 18px; }
+
+/* Tuiles : couleur ET forme, jamais la couleur seule */
+.tile { display: grid; place-items: center; width: 100%; height: 100%; border-radius: 6px; }
+.tile svg { width: 74%; height: 74%; }
+.t1 { background: var(--t1); color: var(--i1); } .t2 { background: var(--t2); color: var(--i2); }
+.t3 { background: var(--t3); color: var(--i3); } .t4 { background: var(--t4); color: var(--i4); }
+
+/* Plateau : la grille et l'anneau autour */
+.boardwrap { position: relative; width: max-content; max-width: 100%; margin: 0 auto; padding: 0 30px 26px 0; }
+.board { --cell: min(46px, calc((100vw - 104px) / var(--n))); --step: calc(var(--cell) + 3px);
+  display: grid; grid-template-columns: repeat(var(--n), var(--cell)); grid-auto-rows: var(--cell); gap: 3px; }
+.cell { padding: 0; border-radius: 6px; }
+.cell.flash .tile { animation: pulse 0.5s ease-in-out 1; outline: 3px solid var(--ink); outline-offset: -3px; }
+@keyframes pulse { 50% { transform: scale(0.82); opacity: 0.6; } }
+.ring { border-radius: 6px; background: var(--soft); border: 1px dashed var(--hair); display: grid; place-items: center; padding: 0; position: relative; font-size: 0.8rem; color: var(--muted); }
+.ring.corner { background: transparent; border-color: transparent; }
+button.slot { cursor: pointer; border-style: solid; }
+button.slot:hover:not(:disabled), button.slot:focus-visible { border-color: var(--ink); background: var(--tray); color: var(--ink); }
+button.slot:disabled { cursor: default; }
+.ring.path { background: var(--ink); color: var(--tray); border-color: var(--ink); opacity: 0.85; }
+.ring.cursor { border: 2px solid var(--ink); background: var(--tray); padding: 3px; }
+.ring.target { border: 2px solid var(--ink); background: var(--tray); color: var(--ink); font-weight: 800; }
+.ring .num { position: absolute; top: 1px; left: 3px; font-size: 0.62rem; font-weight: 700; opacity: 0.7; }
+.ring .arrow { font-size: 1.05rem; font-weight: 800; line-height: 1; }
+.labels { position: absolute; inset: 0; pointer-events: none; }
+.labels span { position: absolute; width: 24px; text-align: left; font-weight: 700; font-size: 0.8rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.labels span.kept { color: var(--ink); text-decoration: underline; text-underline-offset: 3px; font-weight: 800; }
+.hint { min-height: 1.55em; font-size: 0.92rem; }
+.hint strong { font-weight: 800; }
+
+.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.stat { background: var(--soft); border-radius: 6px; padding: 8px 10px; display: flex; flex-direction: column; min-width: 0; }
+.stat span { font-size: 0.74rem; color: var(--muted); font-weight: 700; }
+.stat b { font-size: 1.25rem; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1.25; }
+@media (max-width: 440px) { .stats { grid-template-columns: repeat(2, 1fr); } }
+.formula { font-family: var(--mono); font-size: 0.86rem; background: var(--soft); border-radius: 6px; padding: 10px 12px; overflow-wrap: anywhere; }
+.log { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; max-height: 190px; overflow: auto; font-size: 0.88rem; }
+.log li { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.log .mono { background: var(--soft); border-radius: 4px; padding: 0 6px; }
+.chartbox { display: flex; flex-direction: column; gap: 2px; }
+.chartbox svg { width: 100%; height: auto; display: block; color: var(--ink); overflow: visible; }
+.chartbox .cap { display: flex; justify-content: space-between; font-size: 0.78rem; color: var(--muted); gap: 8px; }
+.axis { stroke: var(--hair); stroke-width: 1; }
+
+/* Barres : exact, faisceau */
+.bars { display: flex; align-items: flex-end; gap: 4px; height: 120px; padding-top: 6px; }
+.bar { flex: 1 1 0; min-width: 0; height: 100%; position: relative; display: flex; align-items: flex-end; }
+.bar i { position: absolute; left: 0; right: 0; bottom: 0; border-radius: 3px 3px 0 0; }
+.bar .found { background: var(--hair); } .bar .done { background: var(--ink); }
+.bar.off .done { opacity: 0.18; } .bar.off .found { opacity: 0.5; }
+.axislabels { display: flex; gap: 4px; font-size: 0.7rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.axislabels span { flex: 1 1 0; text-align: center; min-width: 0; }
+.layers { display: flex; flex-direction: column; gap: 3px; font-size: 0.82rem; font-variant-numeric: tabular-nums; max-height: 280px; overflow: auto; }
+.layer { display: grid; grid-template-columns: 2.4rem 1fr 7.5rem; gap: 8px; align-items: center; }
+.layer .meter { position: relative; height: 12px; background: var(--soft); border-radius: 3px; }
+.layer .meter i { position: absolute; inset: 0 auto 0 0; border-radius: 3px; }
+.layer .meter .c { background: var(--line); } .layer .meter .k { background: var(--ink); }
+.layer .t { color: var(--muted); text-align: right; white-space: nowrap; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chips .btn { padding: 6px 12px; min-height: 34px; }
+
+/* Génome */
+.genome { display: flex; flex-wrap: wrap; gap: 3px; font-family: var(--mono); }
+.genome span { width: 1.7rem; height: 2rem; display: grid; place-items: center; border-radius: 5px; background: var(--soft); color: var(--muted); font-weight: 700; }
+.genome span.used { background: var(--ink); color: var(--tray); }
+.genome span.ignored { text-decoration: line-through; opacity: 0.55; }
+.genome span.changed { outline: 3px solid var(--ink); outline-offset: 1px; }
+.tablewrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; font-size: 0.9rem; }
+th, td { text-align: left; padding: 6px 8px 6px 0; border-top: 1px solid var(--hair); white-space: nowrap; }
+th { font-size: 0.74rem; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; border-top: 0; }
+td.num, th.num { text-align: right; padding-right: 10px; }
+tr.best td { font-weight: 800; }
+tr.ignored td { color: var(--muted); }
+td.win { font-weight: 800; }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; }
+.card { background: var(--soft); border-radius: 6px; padding: 12px; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.card b { font-size: 1rem; }
+.card .tag { font-size: 0.78rem; color: var(--muted); font-weight: 700; }
+.pipe { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-weight: 700; font-size: 0.9rem; }
+.pipe span.box { background: var(--soft); border-radius: 6px; padding: 6px 10px; }
+.pipe span.arrow { color: var(--muted); }
+.solution { font-family: var(--mono); word-break: break-all; background: var(--soft); border-radius: 6px; padding: 10px 12px; font-size: 0.88rem; }
+footer { color: var(--muted); font-size: 0.86rem; }
+@media (prefers-reduced-motion: reduce) { .cell.flash .tile { animation: none; } }
+
+/* ===== Version 2 : grille collante à côté du texte ===== */
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 20; background: var(--page); }
+.layout { max-width: 1080px; margin: 0 auto; display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 20px; align-items: start; }
+.content { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.content { grid-column: 1; grid-row: 1; }
+.side { grid-column: 2; grid-row: 1; }
+.side { position: sticky; top: 16px; background: var(--tray); border-radius: var(--radius); padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.vhead { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.vchip { flex: none; font-size: 0.74rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; background: var(--ink); color: var(--tray); border-radius: 999px; padding: 3px 10px; }
+.vstep { flex: 1 1 auto; font-size: 0.84rem; color: var(--muted); font-weight: 700; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vtoggle { flex: none; padding: 3px 10px; min-height: 28px; font-size: 0.78rem; }
+.vbody { display: flex; flex-direction: column; gap: 10px; }
+.side .board { --cell: min(42px, calc((100vw - 120px) / var(--n))); }
+.side .boardwrap { padding: 0; }
+.side .boardwrap.withlabels { padding: 0 30px 26px 0; }
+.vstats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.vstats .stat { padding: 5px 8px; }
+.vstats .stat b { font-size: 1.05rem; }
+.vpath-row { display: flex; flex-direction: column; gap: 2px; }
+.vpath-row span { font-size: 0.72rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+.vpath { font-family: var(--mono); font-size: 0.86rem; background: var(--soft); border-radius: 6px; padding: 5px 8px; min-height: 2em; overflow-wrap: anywhere; display: block; }
+.vnote { font-size: 0.86rem; color: var(--muted); min-height: 2.6em; }
+.side.collapsed .vbody { display: none; }
+@media (max-width: 880px) {
+  .layout { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .side { grid-column: 1; grid-row: 1; }
+  .content { grid-column: 1; grid-row: 2; }
+  .side { top: env(safe-area-inset-top, 0px); z-index: 10; border-radius: 0 0 var(--radius) var(--radius); margin-inline: -4px; box-shadow: 0 6px 14px rgba(0,0,0,0.12); padding: 8px 12px 10px; }
+  .vbody { flex-direction: row; gap: 12px; align-items: flex-start; }
+  .vinfo { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+  .vstats { grid-template-columns: repeat(2, 1fr); }
+  .vnote { display: none; }
+  .side .board { --cell: min(30px, calc((100vw - 190px) / var(--n))); }
+  .side .boardwrap.withlabels { padding: 0 24px 22px 0; }
+}
+@media (max-width: 440px) { .side .board { --cell: min(26px, calc((100vw - 176px) / var(--n))); } }
+.vinfo { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.vcheck { font-size: 0.82rem; }
+.ichip { display: inline-grid; place-items: center; width: 1.25em; height: 1.25em; vertical-align: -0.28em; border-radius: 4px; margin: 0 1px; }
+.ichip svg { width: 78%; height: 78%; }
+.ring.numbered .num { opacity: 1; }
+
+/* Étapes guidées */
+.stepper { background: var(--soft); border-radius: var(--radius); padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+.sthead { display: flex; align-items: center; gap: 10px; font-size: 0.8rem; font-weight: 700; color: var(--muted); }
+.stbar { flex: 1 1 auto; height: 4px; background: var(--hair); border-radius: 2px; overflow: hidden; }
+.stbar i { display: block; height: 100%; background: var(--ink); transition: width 0.25s; }
+.sttitle { font-size: 1.05rem; font-weight: 800; text-transform: none; letter-spacing: 0; color: var(--ink); }
+.stbody { display: flex; flex-direction: column; gap: 8px; }
+.stbody p { max-width: 62ch; }
+.stextra { display: flex; flex-direction: column; gap: 10px; }
+.stnav { display: flex; gap: 8px; flex-wrap: wrap; }
+.stnav .grow { flex: 1 1 auto; }
+.dots { display: flex; gap: 5px; flex-wrap: wrap; }
+.dots button { width: 12px; height: 12px; border-radius: 50%; border: 1px solid var(--line); background: var(--tray); padding: 0; cursor: pointer; }
+.dots button[aria-current="step"] { background: var(--ink); border-color: var(--ink); }
+.panel { display: flex; flex-direction: column; gap: 10px; }
+
+/* Vignettes de positions */
+.minis { display: grid; grid-template-columns: repeat(auto-fill, minmax(86px, 1fr)); gap: 8px; }
+.minib { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 4px; border-radius: 6px; border: 1px solid var(--hair); background: var(--tray); cursor: pointer; font-size: 0.72rem; line-height: 1.25; color: var(--ink); min-width: 0; }
+.minib:hover { border-color: var(--ink); }
+.minib[aria-pressed="true"] { border: 2px solid var(--ink); padding: 5px 3px; }
+.minib svg { width: 100%; max-width: 76px; height: auto; display: block; }
+.minib .cap { color: var(--muted); text-align: center; font-variant-numeric: tabular-nums; }
+.minib .tag { font-weight: 800; }
+.minib.seen { opacity: 0.55; }
+.minib.win { border-color: var(--ink); }
+.m1 { fill: var(--t1); } .m2 { fill: var(--t2); } .m3 { fill: var(--t3); } .m4 { fill: var(--t4); }
+.s1 { fill: var(--i1); } .s2 { fill: var(--i2); } .s3 { fill: var(--i3); } .s4 { fill: var(--i4); }
+.ringbox { fill: none; stroke: var(--line); stroke-dasharray: 3 3; }
+.mini-cursor { stroke: var(--ink); stroke-width: 14; }
+.ctrl { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.ctrl .btn { padding: 6px 12px; min-height: 36px; }
+.statusline { font-size: 0.92rem; }
+.statusline strong { font-weight: 800; }
+.seq { font-family: var(--mono); font-size: 0.86rem; display: flex; flex-wrap: wrap; gap: 2px; align-items: center; overflow-wrap: anywhere; }
+.seq span { display: inline-block; padding: 1px 3px; border-radius: 3px; background: var(--soft); }
+.seq .used { background: var(--ink); color: var(--tray); }
+.seq .cut { border-right: 3px solid var(--ink); }
+.seq .chg { outline: 2px solid var(--ink); }
+.seq .tail { color: var(--muted); }
+.histo { display: flex; align-items: flex-end; gap: 3px; height: 90px; }
+.histo div { flex: 1 1 0; background: var(--ink); border-radius: 2px 2px 0 0; min-width: 0; }
+.histolab { display: flex; gap: 3px; font-size: 0.66rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.histolab span { flex: 1 1 0; text-align: center; min-width: 0; overflow: hidden; }
+
+</style>
+<div class="layout">
+  <aside class="side" id="side" aria-label="Grille d'exemple, suivie pendant toute la page"></aside>
+  <main class="content">
+    <header style="display:flex;flex-direction:column;gap:10px">
+      <h1>Le solveur de switch</h1>
+      <p class="lead">Quatre façons de chercher la liste de coups la plus courte, suivies pas à pas sur une seule grille d'exemple. Elle reste affichée à côté du texte et montre où en est chaque méthode.</p>
+      <nav class="nav" aria-label="Sections">
+        <a href="#vue">Vue d'ensemble</a><a href="#terrain">Terrain</a><a href="#cout">Coût</a><a href="#exact">Exact</a><a href="#faisceau">Faisceau</a><a href="#genetique">Génétique</a><a href="#poussees">Gènes de poussée</a><a href="#comparer">Comparer</a>
+      </nav>
+    </header>
+
+    <section class="tray" id="vue">
+      <h2>Comment lire cette page</h2>
+      <p>La grille d'exemple est <code>4x4:a</code>, une grille du banc d'essai. Sa solution la plus courte fait 10 coups, ce qui permet de juger chaque méthode. Chaque section a des étapes guidées (boutons Précédent et Suivant) et, plus bas, des outils pour explorer librement. Ce que vous faites déplace la grille de côté : position en cours de développement, positions gardées par le faisceau, génome joué coup par coup. Le bandeau au-dessus de la grille dit quelle méthode la pilote.</p>
+      <div class="cards">
+        <div class="card"><span class="tag">Garantie : l'optimum</span><b>Exact</b><span>Tout explorer, dans l'ordre du nombre de coups. La première victoire est la plus courte.</span><span class="muted small">Grilles de 4×4 et 5×5.</span></div>
+        <div class="card"><span class="tag">Déterministe</span><b>Faisceau</b><span>À chaque couche, pousser partout et ne garder que les W positions les moins chères.</span><span class="muted small">Toutes les grilles, testé jusqu'à 10×10.</span></div>
+        <div class="card"><span class="tag">Aléatoire, reproductible</span><b>Génétique</b><span>Faire évoluer des listes de coups : garder les meilleures, les croiser, les muter.</span><span class="muted small">Jusqu'à 8×8, par étapes ou en une fois.</span></div>
+        <div class="card"><span class="tag">Variante</span><b>Gènes de poussée</b><span>Le génétique, mais chaque gène est une poussée et la marche est calculée.</span><span class="muted small">Au mieux égal au génétique classique.</span></div>
+      </div>
+    </section>
+
+    <section class="tray" id="terrain">
+      <h2>Le terrain</h2>
+      <p>Les règles du jeu, sur la grille d'exemple. À la dernière étape, la grille devient jouable.</p>
+      <div id="terrain-app" class="panel"></div>
+    </section>
+
+    <section class="tray" id="cout">
+      <h2>Le coût d'une position</h2>
+      <p>Pour choisir quelles positions garder, les méthodes approchées doivent donner un chiffre à une position où la partie n'est pas finie. Voici d'où vient ce chiffre.</p>
+      <div id="cout-app" class="panel"></div>
+    </section>
+
+    <section class="tray" id="exact">
+      <h2>Exact : tout explorer, dans l'ordre</h2>
+      <p>La seule méthode qui prouve avoir trouvé le minimum. Sur cette grille, elle développe 445 positions.</p>
+      <div id="exact-app" class="panel"></div>
+    </section>
+
+    <section class="tray" id="faisceau">
+      <h2>Faisceau : ne garder que les meilleures</h2>
+      <p>Même exploration, couche par couche, mais seules les W positions les moins chères survivent à chaque couche.</p>
+      <div id="beam-app" class="panel"></div>
+    </section>
+
+    <section class="tray" id="genetique">
+      <h2>Génétique : faire évoluer des listes de coups</h2>
+      <p>Au lieu d'explorer méthodiquement, on tire des listes de coups au hasard et on garde les meilleures, génération après génération.</p>
+      <div id="ga-app" class="panel"></div>
+    </section>
+
+    <section class="tray" id="poussees">
+      <h2>Gènes de poussée : une distance sur l'anneau</h2>
+      <p>Le même principe, mais un gène décrit une poussée entière. La marche jusqu'à la case est calculée.</p>
+      <div id="push-app" class="panel"></div>
+    </section>
+
+    <section class="tray" id="comparer">
+      <h2>Comparer</h2>
+      <p>Coups de la meilleure solution après 10 secondes par moteur, sur les grilles du banc d'essai. Une exécution par grille et par moteur : des écarts de quelques coups ne prouvent rien.</p>
+      <div id="compare-app" class="panel"></div>
+    </section>
+
+    <footer>Les moteurs de cette page sont un port fidèle de <code>lib/solver/</code> : mêmes positions, mêmes solutions, vérifiés par comparaison. Explications écrites : <code>docs/SOLVER.md</code>.</footer>
+  </main>
+</div>
+
+<script>
+/* ---------- Moteur : port fidèle de lib/solver/*.ts, sans dépendance ---------- */
+const UP = 0, RIGHT = 1, DOWN = 2, LEFT = 3, LET = 'urdl';
+
+function createState(canva) {
+  const rows = canva.length, cols = canva[0].length, cells = new Uint8Array(rows * cols);
+  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) cells[r * cols + c] = canva[r][c];
+  return { rows, cols, cells, x: 0, y: 0, held: 1 };
+}
+const cloneState = s => ({ rows: s.rows, cols: s.cols, cells: s.cells.slice(), x: s.x, y: s.y, held: s.held });
+function copyState(from, into) {
+  if (into.cells.length !== from.cells.length) into.cells = new Uint8Array(from.cells.length);
+  into.cells.set(from.cells);
+  into.rows = from.rows; into.cols = from.cols; into.x = from.x; into.y = from.y; into.held = from.held;
+}
+const isWon = s => s.rows <= 1 || s.cols <= 1;
+
+function removeRow(s, r) {
+  s.cells.copyWithin(r * s.cols, (r + 1) * s.cols);
+  s.rows--;
+  s.cells = s.cells.subarray(0, s.rows * s.cols);
+}
+function removeColumn(s, c) {
+  const { rows, cols, cells } = s;
+  let w = 0;
+  for (let r = 0; r < rows; r++) for (let k = 0; k < cols; k++) if (k !== c) cells[w++] = cells[r * cols + k];
+  s.cols--;
+  s.cells = cells.subarray(0, rows * s.cols);
+}
+// Renvoie les lignes retirées, dans l'ordre : [{kind:'row'|'col', index}]
+function evaluate(s, removed) {
+  for (;;) {
+    if (isWon(s)) return;
+    const { rows, cols, cells } = s;
+    let line = -1;
+    for (let r = 0; r < rows && line < 0; r++) {
+      const v = cells[r * cols]; let same = true;
+      for (let c = 1; c < cols; c++) if (cells[r * cols + c] !== v) { same = false; break; }
+      if (same) line = r;
+    }
+    if (line >= 0) { if (removed) removed.push({ kind: 'row', index: line }); removeRow(s, line); if (s.y !== 0) s.y--; continue; }
+    for (let c = 0; c < cols && line < 0; c++) {
+      const v = cells[c]; let same = true;
+      for (let r = 1; r < rows; r++) if (cells[r * cols + c] !== v) { same = false; break; }
+      if (same) line = c;
+    }
+    if (line < 0) return;
+    if (removed) removed.push({ kind: 'col', index: line });
+    removeColumn(s, line); if (s.x !== 0) s.x--;
+  }
+}
+function step(s, dir, removed, skipEvaluate) {
+  const { rows, cols, cells } = s;
+  if (isWon(s)) return false;
+  if ((s.y <= 0 && dir === DOWN) || (s.y >= rows + 1 && dir === UP) || (s.x <= 0 && dir === LEFT) || (s.x >= cols + 1 && dir === RIGHT)) return false;
+  const onRowBorder = s.y === 0 || s.y === rows + 1, onColBorder = s.x === 0 || s.x === cols + 1;
+  if ((onRowBorder && (dir === LEFT || dir === RIGHT)) || (onColBorder && (dir === UP || dir === DOWN))) {
+    if (dir === UP) s.y++; else if (dir === DOWN) s.y--; else if (dir === LEFT) s.x--; else s.x++;
+  } else {
+    let out;
+    if (dir === DOWN) {
+      const c = s.x - 1; out = cells[c];
+      for (let r = 0; r < rows - 1; r++) cells[r * cols + c] = cells[(r + 1) * cols + c];
+      cells[(rows - 1) * cols + c] = s.held; s.y = 0;
+    } else if (dir === UP) {
+      const c = s.x - 1; out = cells[(rows - 1) * cols + c];
+      for (let r = rows - 1; r > 0; r--) cells[r * cols + c] = cells[(r - 1) * cols + c];
+      cells[c] = s.held; s.y = rows + 1;
+    } else if (dir === LEFT) {
+      const o = (s.y - 1) * cols; out = cells[o];
+      for (let c = 0; c < cols - 1; c++) cells[o + c] = cells[o + c + 1];
+      cells[o + cols - 1] = s.held; s.x = 0;
+    } else {
+      const o = (s.y - 1) * cols; out = cells[o + cols - 1];
+      for (let c = cols - 1; c > 0; c--) cells[o + c] = cells[o + c - 1];
+      cells[o] = s.held; s.x = cols + 1;
+    }
+    s.held = out;
+  }
+  if (!skipEvaluate) evaluate(s, removed);
+  return true;
+}
+
+const _costs = new Int32Array(64), _counts = new Int32Array(5);
+function cheapest(cells, lines, len, stride, offset, detail) {
+  let n = 0;
+  for (let l = 0; l < lines; l++) {
+    _counts[1] = _counts[2] = _counts[3] = _counts[4] = 0;
+    const base = l * offset;
+    for (let k = 0; k < len; k++) _counts[cells[base + k * stride]]++;
+    _costs[n] = len - Math.max(_counts[1], _counts[2], _counts[3], _counts[4]);
+    if (detail) detail.push(_costs[n]);
+    n++;
+  }
+  const sorted = Array.from(_costs.subarray(0, n)).sort((a, b) => a - b);
+  let sum = 0;
+  for (let i = 0; i < n - 1; i++) sum += sorted[i];
+  return sum;
+}
+function nearness(s) {
+  return Math.min(cheapest(s.cells, s.rows, s.cols, 1, s.cols), cheapest(s.cells, s.cols, s.rows, s.cols, 1));
+}
+// Détail pour l'affichage : coût de chaque rangée et de chaque colonne, et lesquelles comptent
+function nearnessDetail(s) {
+  const rowCosts = [], colCosts = [];
+  const a = cheapest(s.cells, s.rows, s.cols, 1, s.cols, rowCosts);
+  const b = cheapest(s.cells, s.cols, s.rows, s.cols, 1, colCosts);
+  const pick = (costs) => costs.map((c, i) => [c, i]).sort((p, q) => p[0] - q[0] || p[1] - q[1]).slice(0, costs.length - 1).map(p => p[1]);
+  return { rowCosts, colCosts, rowsSum: a, colsSum: b, useRows: a <= b, kept: a <= b ? pick(rowCosts) : pick(colCosts), value: Math.min(a, b) };
+}
+function stateKey(s) {
+  let h1 = 2166136261, h2 = 0x9747b28c;
+  const mix = v => { h1 = Math.imul(h1 ^ v, 16777619); h2 = Math.imul(h2 ^ v, 0x85ebca6b) ^ (h2 >>> 13); };
+  mix(s.rows); mix(s.cols); mix(s.x); mix(s.y); mix(s.held);
+  for (let i = 0; i < s.cells.length; i++) mix(s.cells[i]);
+  return (h1 >>> 0) * 2097152 + (h2 >>> 11);
+}
+
+/* ---------- Anneau et cases de poussée ---------- */
+const ringSize = s => 2 * (s.rows + s.cols) + 4;
+const slotCount = s => 2 * (s.rows + s.cols);
+function ringIndex(s, x, y) {
+  const C = s.cols + 1, R = s.rows + 1;
+  if (y === 0) return x; if (x === C) return C + y; if (y === R) return C + R + (C - x);
+  return 2 * C + R + (R - y);
+}
+function ringCell(s, index) {
+  const C = s.cols + 1, R = s.rows + 1;
+  if (index <= C) return [index, 0];
+  if (index <= C + R) return [C, index - C];
+  if (index <= 2 * C + R) return [C - (index - C - R), R];
+  return [0, R - (index - 2 * C - R)];
+}
+function slotRing(s, slot) {
+  const { rows, cols } = s, C = cols + 1, R = rows + 1;
+  if (slot < cols) return 1 + slot; slot -= cols;
+  if (slot < rows) return C + 1 + slot; slot -= rows;
+  if (slot < cols) return C + R + 1 + slot;
+  return 2 * C + R + 1 + slot - cols;
+}
+function ringSlot(s, index) {
+  const { rows, cols } = s, C = cols + 1, R = rows + 1, P = 2 * C + 2 * R;
+  let r = index % P;
+  if (r === 0 || r === C || r === C + R || r === 2 * C + R) r = (r + 1) % P;
+  if (r <= cols) return r - 1;
+  if (r < C + R) return cols + (r - C - 1);
+  if (r < 2 * C + R) return cols + rows + (r - C - R - 1);
+  return 2 * cols + rows + (r - 2 * C - R - 1);
+}
+function slotDirection(s, slot) {
+  const { rows, cols } = s;
+  if (slot < cols) return UP; if (slot < cols + rows) return LEFT; if (slot < 2 * cols + rows) return DOWN; return RIGHT;
+}
+function walkDistance(s, slot) {
+  const P = ringSize(s), f = (slotRing(s, slot) - ringIndex(s, s.x, s.y) + P) % P;
+  return Math.min(f, P - f);
+}
+function applySlot(s, slot, removed) {
+  const [x, y] = ringCell(s, slotRing(s, slot));
+  s.x = x; s.y = y;
+  return step(s, slotDirection(s, slot), removed);
+}
+// Cases d'anneau traversées pour aller au slot (la plus courte), départ et arrivée compris
+function walkPath(s, slot) {
+  const P = ringSize(s), from = ringIndex(s, s.x, s.y), to = slotRing(s, slot);
+  const f = (to - from + P) % P, cw = f <= P - f;
+  const path = [from];
+  for (let i = cw ? f : P - f, idx = from; i > 0; i--) { idx = (idx + (cw ? 1 : P - 1)) % P; path.push(idx); }
+  return path;
+}
+function slotLetters(s, slot) {
+  const P = ringSize(s), from = ringIndex(s, s.x, s.y), to = slotRing(s, slot);
+  const f = (to - from + P) % P, cw = f <= P - f;
+  let index = from, text = '';
+  for (let n = cw ? f : P - f; n > 0; n--) {
+    const nx = (index + (cw ? 1 : P - 1)) % P;
+    const [x0, y0] = ringCell(s, index), [x1, y1] = ringCell(s, nx);
+    text += LET[x1 > x0 ? RIGHT : x1 < x0 ? LEFT : y1 > y0 ? UP : DOWN];
+    index = nx;
+  }
+  return text + LET[slotDirection(s, slot)];
+}
+// Découpe une liste de coups en actions « marche + poussée » ; renvoie [{walk, push, slot, cost}]
+function decompose(canva, letters) {
+  const s = createState(canva), out = [];
+  let walk = '';
+  for (const l of letters) {
+    const b = cloneState(s);
+    if (!step(s, LET.indexOf(l))) continue;
+    if (Math.abs(s.x - b.x) + Math.abs(s.y - b.y) === 1) { walk += l; continue; }
+    out.push({ walk, push: l, slot: ringSlot(b, ringIndex(b, b.x, b.y)), cost: walk.length + 1 });
+    walk = '';
+  }
+  return out;
+}
+
+/* ---------- Élagage ---------- */
+function play(canva, moves) {
+  const s = createState(canva); let played = '';
+  for (const m of moves) { if (isWon(s)) break; if (step(s, LET.indexOf(m))) played += m; }
+  return isWon(s) ? played : null;
+}
+function prune(canva, moves) {
+  let best = play(canva, moves); if (best === null) best = moves;
+  for (let again = true; again;) {
+    again = false;
+    for (let k = 1; k <= 8 && !again; k++)
+      for (let i = 0; i + k <= best.length && !again; i++) {
+        const shorter = play(canva, best.slice(0, i) + best.slice(i + k));
+        if (shorter !== null && shorter.length < best.length) { best = shorter; again = true; }
+      }
+  }
+  return best;
+}
+
+/* ---------- Recherche exacte ---------- */
+function replaySlots(canva, slots) {
+  const s = createState(canva); let text = '';
+  for (const slot of slots) { text += slotLetters(s, slot); applySlot(s, slot); }
+  return text;
+}
+function solveExact(canva, opts) {
+  const maxNodes = (opts && opts.maxNodes) || 2000000;
+  const scratch = createState(canva), parents = [-1], slots = [-1], best = new Map();
+  const buckets = [[{ state: createState(canva), id: 0, key: 0 }]];
+  const expandedByDist = [], foundByDist = [0];
+  best.set(stateKey(scratch), 0);
+  let nodes = 0;
+  for (let dist = 0; dist < buckets.length; dist++) {
+    for (const entry of buckets[dist] || []) {
+      if (isWon(entry.state)) {
+        const chain = [];
+        for (let id = entry.id; id > 0; id = parents[id]) chain.push(slots[id]);
+        return { exhaustive: true, moves: dist, solution: replaySlots(canva, chain.reverse()), nodes, expandedByDist, foundByDist };
+      }
+      if (best.get(entry.key) !== undefined && best.get(entry.key) < dist) continue;
+      if (++nodes > maxNodes) return { exhaustive: false, moves: 0, solution: '', lowerBound: dist, nodes, expandedByDist, foundByDist };
+      expandedByDist[dist] = (expandedByDist[dist] || 0) + 1;
+      const n = slotCount(entry.state);
+      for (let slot = 0; slot < n; slot++) {
+        copyState(entry.state, scratch);
+        const next = dist + walkDistance(scratch, slot) + 1;
+        applySlot(scratch, slot);
+        const key = stateKey(scratch), known = best.get(key);
+        if (known !== undefined && known <= next) continue;
+        best.set(key, next); parents.push(entry.id); slots.push(slot);
+        (buckets[next] = buckets[next] || []).push({ state: cloneState(scratch), id: parents.length - 1, key });
+        foundByDist[next] = (foundByDist[next] || 0) + 1;
+      }
+      entry.state = null;
+    }
+    buckets[dist] = [];
+  }
+  return { exhaustive: true, moves: 0, solution: '', nodes, expandedByDist, foundByDist };
+}
+
+/* ---------- Faisceau ---------- */
+function createBeam(canva, o) {
+  o = o || {};
+  const startWidth = o.startWidth || 25, maxWidth = o.maxWidth || 25600, maxLayers = o.maxLayers || 120;
+  const tileWeight = o.tileWeight == null ? 8 : o.tileWeight, moveWeight = o.moveWeight == null ? 1 : o.moveWeight;
+  const root = createState(canva), scratch = createState(canva), rebuilt = createState(canva);
+  let width = startWidth, round = 0, layerIndex = 0, generation = 0, done = false;
+  let layer = [{ state: root, moves: 0, link: null }], seen = new Map(), best = null;
+  let headline = { tiles: root.rows * root.cols, near: nearness(root) };
+  let lastInfo = null;
+  function lettersOf(link) {
+    const slots = []; for (let l = link; l; l = l.prev) slots.push(l.slot);
+    copyState(root, rebuilt); let text = '';
+    for (let i = slots.length - 1; i >= 0; i--) { text += slotLetters(rebuilt, slots[i]); applySlot(rebuilt, slots[i]); }
+    return text;
+  }
+  function nextRound() {
+    round++; layerIndex = 0;
+    if (width >= maxWidth) { done = true; return; }
+    width = Math.min(maxWidth, width * 2);
+    layer = [{ state: root, moves: 0, link: null }]; seen = new Map();
+  }
+  function expand() {
+    const candidates = []; let tried = 0;
+    for (const node of layer) {
+      const n = slotCount(node.state);
+      for (let slot = 0; slot < n; slot++) {
+        copyState(node.state, scratch);
+        const moves = node.moves + walkDistance(scratch, slot) + 1;
+        if (best && moves >= best.moves) continue;
+        tried++;
+        applySlot(scratch, slot);
+        if (isWon(scratch)) {
+          const link = { slot, prev: node.link }, solution = prune(canva, lettersOf(link));
+          if (!best || solution.length < best.moves) best = { moves: solution.length, solution, tiles: scratch.rows * scratch.cols };
+          continue;
+        }
+        const key = stateKey(scratch), known = seen.get(key);
+        if (known !== undefined && known <= moves) continue;
+        seen.set(key, moves);
+        const tiles = scratch.rows * scratch.cols, near = nearness(scratch);
+        candidates.push({ parent: node, slot, moves, key, tiles, near, cost: tiles * tileWeight + near + moves * moveWeight });
+      }
+    }
+    candidates.sort((a, b) => a.cost - b.cost);
+    const next = [], taken = new Set();
+    for (const c of candidates) {
+      if (next.length >= width) break;
+      if (taken.has(c.key) || seen.get(c.key) < c.moves) continue;
+      taken.add(c.key);
+      const state = cloneState(c.parent.state); applySlot(state, c.slot);
+      next.push({ state, moves: c.moves, link: { slot: c.slot, prev: c.parent.link } });
+    }
+    if (candidates[0] && !best) headline = { tiles: candidates[0].tiles, near: candidates[0].near };
+    lastInfo = { tried, candidates: candidates.length, kept: next.length, width };
+    layer = next;
+  }
+  return {
+    step() {
+      if (!done) {
+        expand(); generation++; layerIndex++;
+        if (layer.length === 0 || layerIndex >= maxLayers) nextRound();
+      }
+      const base = { generation, pass: round, stage: layerIndex, done, info: lastInfo, width };
+      return best
+        ? Object.assign(base, { won: true, tiles: best.tiles, near: 0, moves: best.moves, solution: best.solution, averageTiles: 0 })
+        : Object.assign(base, { won: false }, headline, { moves: layer[0] ? layer[0].moves : 0, solution: '', averageTiles: 0 });
+    },
+  };
+}
+
+/* ---------- Génétique (gènes = coups) ---------- */
+function mulberry32(seed) {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+function keyOf(s) {
+  let h = 2166136261;
+  const mix = v => { h = Math.imul(h ^ v, 16777619); };
+  mix(s.rows); mix(s.cols); mix(s.x); mix(s.y); mix(s.held);
+  for (let i = 0; i < s.cells.length; i++) mix(s.cells[i]);
+  return h >>> 0;
+}
+const NOT_WON = 1e6, HOPELESS = 2e6, STALE_STAGES = 3;
+function createGA(canva, o) {
+  o = o || {};
+  const population = o.population || 1000, length = o.length || 50, beam = o.beam || 100;
+  const maxStages = o.maxStages || 30;
+  const stageGenerations = maxStages === 1 ? Infinity : (o.generations || 15);
+  const elite = Math.min(o.elite == null ? Math.max(2, Math.round(population * 0.02)) : o.elite, population - 1);
+  const tileWeight = o.tileWeight == null ? 8 : o.tileWeight, moveWeight = o.moveWeight == null ? 1 : o.moveWeight;
+  const rand = mulberry32(o.seed == null ? 1 : o.seed);
+  const randMove = () => Math.floor(rand() * 4);
+  const root = createState(canva);
+  const costOf = (s, near, moves) => s.rows * s.cols * tileWeight + near + moves * moveWeight;
+  const rootNear = nearness(root);
+  const rootPosition = { state: root, moves: '', near: rootNear, cost: costOf(root, rootNear, 0) };
+  const scratch = createState(canva);
+  let pool = [rootPosition];
+  let genomes = Array.from({ length: population }, () => new Uint8Array(length));
+  let next = Array.from({ length: population }, () => new Uint8Array(length));
+  let starts = new Int32Array(population), nextStarts = new Int32Array(population);
+  const evals = genomes.map(() => ({ score: 0, used: 0, moves: 0, won: false, tiles: 0, near: 0 }));
+  let order = Array.from({ length: population }, (_, i) => i);
+  let generation = 0, pass = 0, stage = 0, stageGeneration = 0, staleStages = 0, stageBest = Infinity;
+  let best = null, headline = { tiles: root.rows * root.cols, near: rootNear, moves: 0, solution: '' }, started = false;
+
+  function fillPopulation() {
+    for (let i = 0; i < population; i++) { starts[i] = i % pool.length; for (let j = 0; j < length; j++) genomes[i][j] = randMove(); }
+  }
+  function evaluate(g, startIndex, out) {
+    const from = pool[startIndex]; copyState(from.state, scratch);
+    const base = from.moves.length, limit = best ? best.moves.length - base : Infinity;
+    let bestCost = from.cost, used = 0, moves = 0, bestMoves = 0;
+    let tiles = from.state.rows * from.state.cols, near = from.near;
+    for (let i = 0; i < length; i++) {
+      if (!step(scratch, g[i])) continue;
+      moves += 1;
+      if (moves >= limit) { out.score = HOPELESS; out.won = false; out.used = used; out.moves = bestMoves; out.tiles = tiles; out.near = near; return; }
+      if (isWon(scratch)) { out.score = base + moves; out.used = i + 1; out.moves = moves; out.won = true; out.tiles = scratch.rows * scratch.cols; out.near = 0; return; }
+      const area = scratch.rows * scratch.cols, n = nearness(scratch), c = costOf(scratch, n, base + moves);
+      if (c < bestCost) { bestCost = c; used = i + 1; bestMoves = moves; tiles = area; near = n; }
+    }
+    out.score = NOT_WON + bestCost; out.won = false; out.used = used; out.moves = bestMoves; out.tiles = tiles; out.near = near;
+  }
+  function rank() {
+    for (let i = 0; i < population; i++) evaluate(genomes[i], starts[i], evals[i]);
+    order = order.sort((a, b) => evals[a].score - evals[b].score || evals[a].used - evals[b].used);
+  }
+  function tournament() {
+    let winner = order[Math.floor(rand() * population)];
+    for (let k = 1; k < 3; k++) { const c = order[Math.floor(rand() * population)]; if (evals[c].score < evals[winner].score) winner = c; }
+    return winner;
+  }
+  function mutate(g, used) {
+    const count = 1 + (rand() < 0.5 ? 1 : 0) + (rand() < 0.25 ? 2 : 0);
+    for (let n = 0; n < count; n++) {
+      const pos = rand() < 0.5 ? Math.floor(rand() * Math.max(1, used)) : Math.min(length - 1, used + Math.floor(rand() * (length - used)));
+      const kind = rand();
+      if (kind < 0.45) g[pos] = (g[pos] + 1 + Math.floor(rand() * 3)) & 3;
+      else if (kind < 0.7) { g.copyWithin(pos + 1, pos, length - 1); g[pos] = randMove(); }
+      else if (kind < 0.9) { g.copyWithin(pos, pos + 1); g[length - 1] = randMove(); }
+      else { const end = Math.min(length, pos + 2 + Math.floor(rand() * 7)); for (let i = pos; i < end; i++) g[i] = randMove(); }
+    }
+  }
+  function breed() {
+    for (let i = 0; i < elite; i++) { next[i].set(genomes[order[i]]); nextStarts[i] = starts[order[i]]; }
+    for (let i = elite; i < population; i++) {
+      const a = tournament(), child = next[i];
+      child.set(genomes[a]); nextStarts[i] = starts[a];
+      if (rand() < 0.5) {
+        const b = tournament();
+        if (starts[b] === starts[a]) { const cut = Math.floor(rand() * Math.max(1, evals[a].used)); child.set(genomes[b].subarray(cut), cut); }
+      }
+      mutate(child, evals[a].used);
+    }
+    [genomes, next] = [next, genomes]; [starts, nextStarts] = [nextStarts, starts];
+  }
+  function movesOf(index) {
+    const g = genomes[index]; copyState(pool[starts[index]].state, scratch); let text = '';
+    for (let i = 0; i < evals[index].used; i++) if (step(scratch, g[i])) text += LET[g[i]];
+    return text;
+  }
+  function startPass() { pass++; stage = 0; stageGeneration = 0; staleStages = 0; stageBest = Infinity; pool = [rootPosition]; fillPopulation(); rank(); }
+  function endStage() {
+    const winner = order.find(i => evals[i].won);
+    if (winner !== undefined) {
+      const text = prune(canva, pool[starts[winner]].moves + movesOf(winner));
+      if (!best || text.length < best.moves.length) best = { moves: text, tiles: evals[winner].tiles };
+      startPass(); return;
+    }
+    const seen = new Set(), kept = [];
+    for (const i of order) {
+      if (kept.length >= beam || evals[i].score >= HOPELESS) break;
+      copyState(pool[starts[i]].state, scratch);
+      const g = genomes[i]; let text = '';
+      for (let j = 0; j < evals[i].used; j++) if (step(scratch, g[j])) text += LET[g[j]];
+      const key = keyOf(scratch);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const moves = pool[starts[i]].moves + text, near = nearness(scratch);
+      kept.push({ state: cloneState(scratch), moves, near, cost: costOf(scratch, near, moves.length) });
+    }
+    const top = kept[0];
+    if (!top) { startPass(); return; }
+    if (top.cost < stageBest) { stageBest = top.cost; staleStages = 0; } else staleStages++;
+    stage++;
+    if (staleStages >= STALE_STAGES || stage >= maxStages) { startPass(); return; }
+    pool = kept; stageGeneration = 0; fillPopulation(); rank();
+  }
+  // État de la population au moment du rapport (avant la fin éventuelle d'une étape), pour l'affichage
+  function snapshot(k) {
+    return {
+      generation, stage, pass, stageGeneration, won: best !== null,
+      pool: pool.map(p => ({ state: cloneState(p.state), moves: p.moves, near: p.near, cost: p.cost })),
+      top: order.slice(0, k).map(i => ({ genome: Array.from(genomes[i], g => LET[g]).join(''), used: evals[i].used, tiles: evals[i].tiles, near: evals[i].near, moves: evals[i].moves, won: evals[i].won, score: evals[i].score, start: starts[i] })),
+    };
+  }
+  return {
+    step() {
+      if (!started) { started = true; fillPopulation(); rank(); }
+      else { breed(); rank(); generation++; stageGeneration++; }
+      const top = order[0];
+      if (!best && evals[top].score < HOPELESS) {
+        const c = evals[top];
+        headline = { tiles: c.tiles, near: c.near, moves: pool[starts[top]].moves.length + c.moves, solution: pool[starts[top]].moves + movesOf(top) };
+      }
+      const reportedPass = pass, reportedStage = stage;
+      let total = 0; for (let i = 0; i < population; i++) total += evals[i].tiles;
+      const averageTiles = total / population;
+      if (o.onGeneration) o.onGeneration(snapshot(8));
+      if (stageGeneration >= stageGenerations || evals[top].won) endStage();
+      return best
+        ? { generation, pass: reportedPass, stage: reportedStage, won: true, tiles: best.tiles, near: 0, moves: best.moves.length, solution: best.moves.slice(0), averageTiles, poolSize: pool.length }
+        : Object.assign({ generation, pass: reportedPass, stage: reportedStage, won: false }, headline, { averageTiles, poolSize: pool.length });
+    },
+  };
+}
+
+
+/* ---------- Traces pour l'affichage : mêmes calculs, on garde chaque étape ---------- */
+// Dépile les positions de l'exact dans l'ordre ; pour chacune, ses 16 enfants et ce qu'on en fait
+function exactTrace(canva) {
+  const scratch = createState(canva), parents = [-1], slotsOf = [-1], best = new Map();
+  const buckets = [[{ state: createState(canva), id: 0, key: 0 }]], events = [];
+  best.set(stateKey(scratch), 0);
+  const pathOf = id => { const chain = []; for (let i = id; i > 0; i = parents[i]) chain.push(slotsOf[i]); return replaySlots(canva, chain.reverse()); };
+  for (let dist = 0; dist < buckets.length; dist++) {
+    for (const entry of buckets[dist] || []) {
+      if (isWon(entry.state)) {
+        events.push({ kind: 'win', d: dist, id: entry.id, state: cloneState(entry.state), path: pathOf(entry.id), children: [] });
+        return { events, moves: dist, solution: pathOf(entry.id), expansions: events.length - 1 };
+      }
+      if (best.get(entry.key) !== undefined && best.get(entry.key) < dist) continue;
+      const children = [], n = slotCount(entry.state);
+      events.push({ kind: 'expand', d: dist, id: entry.id, state: cloneState(entry.state), slot: slotsOf[entry.id], children, path: pathOf(entry.id) });
+      for (let slot = 0; slot < n; slot++) {
+        copyState(entry.state, scratch);
+        const walk = walkDistance(scratch, slot), next = dist + walk + 1;
+        applySlot(scratch, slot);
+        const key = stateKey(scratch), known = best.get(key);
+        const child = { slot, walk, cost: next, state: cloneState(scratch), won: isWon(scratch), status: 'seen' };
+        if (known === undefined || known > next) {
+          child.status = known === undefined ? 'new' : 'cheaper';
+          best.set(key, next); parents.push(entry.id); slotsOf.push(slot);
+          (buckets[next] = buckets[next] || []).push({ state: cloneState(scratch), id: parents.length - 1, key });
+        }
+        children.push(child);
+      }
+      entry.state = null;
+    }
+    buckets[dist] = [];
+  }
+  return { events, moves: 0, solution: '', expansions: events.length };
+}
+
+// Un tour de faisceau de largeur fixe, couche par couche, avec les positions gardées
+function beamTrace(canva, width, o) {
+  o = o || {};
+  const tileWeight = o.tileWeight == null ? 8 : o.tileWeight, moveWeight = o.moveWeight == null ? 1 : o.moveWeight, maxLayers = o.maxLayers || 120;
+  const root = createState(canva), scratch = createState(canva), rebuilt = createState(canva);
+  let layer = [{ state: root, moves: 0, link: null, cost: root.rows * root.cols * tileWeight + nearness(root), tiles: root.rows * root.cols, near: nearness(root) }];
+  const seen = new Map(), layers = []; let best = null;
+  const lettersOf = link => {
+    const slots = []; for (let l = link; l; l = l.prev) slots.push(l.slot);
+    copyState(root, rebuilt); let text = '';
+    for (let i = slots.length - 1; i >= 0; i--) { text += slotLetters(rebuilt, slots[i]); applySlot(rebuilt, slots[i]); }
+    return text;
+  };
+  for (let layerNo = 1; layerNo <= maxLayers && layer.length; layerNo++) {
+    const candidates = [], wins = []; let tried = 0, dupes = 0, pruned = 0;
+    for (const node of layer) {
+      const n = slotCount(node.state);
+      for (let slot = 0; slot < n; slot++) {
+        copyState(node.state, scratch);
+        const moves = node.moves + walkDistance(scratch, slot) + 1;
+        if (best && moves >= best.moves) { pruned++; continue; }
+        tried++;
+        applySlot(scratch, slot);
+        if (isWon(scratch)) {
+          const raw = lettersOf({ slot, prev: node.link }), solution = prune(canva, raw);
+          wins.push({ raw: raw.length, moves: solution.length, letters: solution });
+          if (!best || solution.length < best.moves) best = { moves: solution.length, solution, layer: layerNo };
+          continue;
+        }
+        const key = stateKey(scratch), known = seen.get(key);
+        if (known !== undefined && known <= moves) { dupes++; continue; }
+        seen.set(key, moves);
+        const tiles = scratch.rows * scratch.cols, near = nearness(scratch);
+        candidates.push({ parent: node, slot, moves, key, tiles, near, cost: tiles * tileWeight + near + moves * moveWeight });
+      }
+    }
+    candidates.sort((a, b) => a.cost - b.cost);
+    const next = [], taken = new Set();
+    for (const c of candidates) {
+      if (next.length >= width) break;
+      if (taken.has(c.key) || seen.get(c.key) < c.moves) continue;
+      taken.add(c.key);
+      const state = cloneState(c.parent.state); applySlot(state, c.slot);
+      next.push({ state, moves: c.moves, cost: c.cost, tiles: c.tiles, near: c.near, link: { slot: c.slot, prev: c.parent.link } });
+    }
+    layers.push({ layer: layerNo, from: layer.length, tried, dupes, pruned, candidates: candidates.length, kept: next.map(k => ({ state: k.state, moves: k.moves, cost: k.cost, tiles: k.tiles, near: k.near, letters: lettersOf(k.link) })), wins });
+    layer = next;
+  }
+  return { layers, best, width };
+}
+
+// Les états après chaque coup d'une liste de coups, avec ce qui disparaît à chaque poussée
+function framesOf(canva, letters) {
+  const s = createState(canva), states = [cloneState(s)], moves = [];
+  for (const l of letters) {
+    const before = cloneState(s), pre = cloneState(s);
+    step(pre, LET.indexOf(l), null, true);
+    const isPush = Math.abs(pre.x - before.x) + Math.abs(pre.y - before.y) !== 1;
+    const lines = isPush ? uniformLinesOf(pre) : [];
+    const removed = [];
+    step(s, LET.indexOf(l), removed);
+    moves.push({ letter: l, isPush, pre: isPush ? pre : null, lines, removed });
+    states.push(cloneState(s));
+  }
+  return { states, moves };
+}
+function uniformLinesOf(s) {
+  const out = [];
+  for (let r = 0; r < s.rows; r++) { let same = true; for (let c = 1; c < s.cols; c++) if (s.cells[r * s.cols + c] !== s.cells[r * s.cols]) { same = false; break; } if (same) out.push({ kind: 'row', index: r }); }
+  for (let c = 0; c < s.cols; c++) { let same = true; for (let r = 1; r < s.rows; r++) if (s.cells[r * s.cols + c] !== s.cells[c]) { same = false; break; } if (same) out.push({ kind: 'col', index: c }); }
+  return out;
+}
+
+
+/* ---------- Données et utilitaires ---------- */
+const CANVA = [[1,3,2,3],[4,1,3,2],[3,1,2,2],[4,4,1,1]]; // 4x4:a du banc d'essai
+const SHAPES = { 1: '<circle cx="50" cy="50" r="27"/>', 2: '<rect x="24" y="24" width="52" height="52" rx="4"/>', 3: '<polygon points="50,20 81,77 19,77"/>', 4: '<polygon points="50,17 83,50 50,83 17,50"/>' };
+const SHAPE_NAME = { 1: 'rond rouge', 2: 'carré bleu', 3: 'triangle vert', 4: 'losange jaune' };
+const ARROW = ['↑', '→', '↓', '←'], DIR_NAME = ['vers le haut', 'vers la droite', 'vers le bas', 'vers la gauche'];
+const WTILE = 8, WMOVE = 1;
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const wait = ms => new Promise(r => setTimeout(r, reduce ? 0 : ms));
+const tick = () => new Promise(r => setTimeout(r, 0));
+const fmt = n => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+const plural = (n, one, many) => n + ' ' + (n > 1 ? many : one);
+
+function h(tag, props, ...kids) {
+  const e = document.createElement(tag);
+  for (const k in props || {}) {
+    const v = props[k];
+    if (k === 'class') e.className = v; else if (k === 'html') e.innerHTML = v;
+    else if (k.startsWith('on')) e.addEventListener(k.slice(2), v);
+    else if (v === true) e.setAttribute(k, ''); else if (v !== false && v != null) e.setAttribute(k, v);
+  }
+  for (const c of kids.flat()) if (c != null && c !== false) e.append(c.nodeType ? c : String(c));
+  return e;
+}
+const tileEl = v => h('span', { class: 'tile t' + v, role: 'img', 'aria-label': SHAPE_NAME[v], html: '<svg viewBox="0 0 100 100" aria-hidden="true" fill="currentColor">' + SHAPES[v] + '</svg>' });
+// Une tuile minuscule à glisser dans une phrase
+const ichip = v => `<span class="ichip t${v}" role="img" aria-label="${SHAPE_NAME[v]}"><svg viewBox="0 0 100 100" aria-hidden="true" fill="currentColor">${SHAPES[v]}</svg></span>`;
+const ichips = arr => arr.map(ichip).join('');
+const SVGNS = 'http://www.w3.org/2000/svg';
+const svg = (tag, attrs) => { const e = document.createElementNS(SVGNS, tag); for (const k in attrs || {}) e.setAttribute(k, attrs[k]); return e; };
+
+function lineChart(points, { xmax, ymin, ymax, label, w = 300, hgt = 70, mark }) {
+  const s = svg('svg', { viewBox: `0 0 ${w} ${hgt}`, role: 'img', 'aria-label': label });
+  const px = x => 6 + (xmax ? x / xmax : 0) * (w - 12), py = y => 6 + (1 - (ymax === ymin ? 0 : (y - ymin) / (ymax - ymin))) * (hgt - 12);
+  s.append(svg('line', { x1: 6, x2: w - 6, y1: hgt - 6, y2: hgt - 6, class: 'axis' }));
+  if (points.length) {
+    s.append(svg('polyline', { points: points.map(p => `${px(p[0])},${py(p[1])}`).join(' '), fill: 'none', stroke: 'currentColor', 'stroke-width': 2, 'stroke-linejoin': 'round' }));
+    const m = mark != null ? points.find(p => p[0] === mark) : points[points.length - 1];
+    if (m) s.append(svg('circle', { cx: px(m[0]), cy: py(m[1]), r: 4.5, fill: 'currentColor' }));
+  }
+  return s;
+}
+const chartBox = (title, value, svgEl) => h('div', { class: 'chartbox' }, h('div', { class: 'cap' }, h('span', {}, title), h('span', {}, value)), svgEl);
+
+// Vignette d'une position : grille, anneau en pointillé, curseur avec sa tuile en main
+function miniSvg(s, cell = 11) {
+  const W = (s.cols + 2) * cell, H = (s.rows + 2) * cell;
+  let g = `<rect class="ringbox" x="${cell * 0.5}" y="${cell * 0.5}" width="${W - cell}" height="${H - cell}" rx="3"/>`;
+  for (let r = 0; r < s.rows; r++) for (let c = 0; c < s.cols; c++) {
+    const v = s.cells[r * s.cols + c];
+    g += `<svg x="${(c + 1) * cell}" y="${(s.rows - r) * cell}" width="${cell}" height="${cell}" viewBox="0 0 100 100"><rect x="3" y="3" width="94" height="94" rx="16" class="m${v}"/><g class="s${v}">${SHAPES[v]}</g></svg>`;
+  }
+  g += `<svg x="${s.x * cell}" y="${(s.rows + 1 - s.y) * cell}" width="${cell}" height="${cell}" viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" class="m${s.held} mini-cursor"/></svg>`;
+  return `<svg viewBox="0 0 ${W} ${H}" aria-hidden="true">${g}</svg>`;
+}
+function miniButton(state, { top, bottom, pressed, cls, onclick, label }) {
+  return h('button', { class: 'minib ' + (cls || ''), 'aria-pressed': pressed ? 'true' : 'false', 'aria-label': label, onclick },
+    top ? h('span', { class: 'tag' }, top) : null, h('span', { html: miniSvg(state) }), bottom ? h('span', { class: 'cap' }, bottom) : null);
+}
+
+const uniformLines = uniformLinesOf;
+const cost = (s, moves) => s.rows * s.cols * WTILE + (isWon(s) ? 0 : nearness(s)) + moves * WMOVE;
+const rowWord = i => ['du bas', 'deuxième', 'troisième', 'du haut'][i] || (i + 1) + 'e';
+
+/* ---------- La grille collante ---------- */
+class BoardView {
+  constructor(root) {
+    this.root = root; this.s = createState(CANVA); this.moves = 0; this.letters = ''; this.o = {}; this.busy = false; this.showCosts = false; this.flash = new Set(); this.onSlot = null; this.holds = 0; this.pending = null;
+    this.chip = h('span', { class: 'vchip' }, 'Départ'); this.stepEl = h('span', { class: 'vstep' });
+    this.toggle = h('button', { class: 'btn vtoggle', 'aria-expanded': 'true', onclick: () => { const c = root.classList.toggle('collapsed'); this.toggle.textContent = c ? 'Afficher' : 'Réduire'; this.toggle.setAttribute('aria-expanded', String(!c)); } }, 'Réduire');
+    this.wrap = h('div', { class: 'boardwrap' });
+    this.statEls = {};
+    const stat = (k, label) => { const b = h('b', {}, '0'); this.statEls[k] = b; return h('div', { class: 'stat' }, h('span', {}, label), b); };
+    this.pathEl = h('code', { class: 'vpath' }); this.noteEl = h('p', { class: 'vnote', 'aria-live': 'polite' });
+    this.costBox = h('input', { type: 'checkbox', id: 'vcosts', onchange: e => { this.showCosts = e.target.checked; this.render(); } });
+    root.append(h('div', { class: 'vhead' }, this.chip, this.stepEl, this.toggle),
+      h('div', { class: 'vbody' }, h('div', { class: 'vboard' }, this.wrap),
+        h('div', { class: 'vinfo' },
+          h('div', { class: 'vstats' }, stat('moves', 'coups'), stat('tiles', 'tuiles'), stat('near', 'prox.'), stat('cost', 'coût')),
+          h('div', { class: 'vpath-row' }, h('span', {}, 'Chemin depuis le départ'), this.pathEl),
+          this.noteEl,
+          h('label', { class: 'check vcheck', for: 'vcosts' }, this.costBox, 'Coût de chaque ligne'))));
+    this.wrap.addEventListener('click', e => { const b = e.target.closest('button.slot'); if (b && this.onSlot && !this.busy) this.onSlot(Number(b.dataset.slot)); });
+    this.show(this.s, { chip: 'Départ', step: 'grille 4x4:a' });
+  }
+  setCosts(on) { this.showCosts = on; this.costBox.checked = on; this.render(); }
+  show(state, o = {}) {
+    this.s = cloneState(state); this.o = o; this.moves = o.moves ?? 0; this.letters = o.letters ?? ''; this.onSlot = o.onSlot || null;
+    this.flash = new Set((o.flash || []).map(f => (f.kind === 'row' ? 'r' : 'c') + f.index));
+    this.chip.textContent = o.chip ?? this.chip.textContent; this.stepEl.textContent = o.step ?? '';
+    this.render();
+  }
+  info() {
+    const s = this.s, won = isWon(s), near = won ? 0 : nearness(s);
+    this.statEls.moves.textContent = this.moves; this.statEls.tiles.textContent = s.rows * s.cols;
+    this.statEls.near.textContent = won ? '·' : near; this.statEls.cost.textContent = won ? 'gagné' : cost(s, this.moves);
+    this.pathEl.textContent = this.letters || '(aucun coup)';
+    this.noteEl.textContent = this.o.note || (won ? `Gagné en ${this.moves} coups.` : '');
+  }
+  render() {
+    const s = this.s, o = this.o, cursor = ringIndex(s, s.x, s.y), n = s.cols + 2, path = new Set(o.path || []);
+    const interactive = !!this.onSlot && !this.busy && !isWon(s);
+    const board = h('div', { class: 'board', style: `--n:${n}`, role: 'group', 'aria-label': 'Grille d\'exemple' });
+    for (let y = s.rows + 1; y >= 0; y--) for (let x = 0; x <= s.cols + 1; x++) {
+      if (x >= 1 && x <= s.cols && y >= 1 && y <= s.rows) {
+        const f = this.flash.has('r' + (y - 1)) || this.flash.has('c' + (x - 1));
+        board.append(h('div', { class: 'cell' + (f ? ' flash' : '') }, tileEl(s.cells[(y - 1) * s.cols + (x - 1)])));
+        continue;
+      }
+      const idx = ringIndex(s, x, y), corner = (x === 0 || x === s.cols + 1) && (y === 0 || y === s.rows + 1), isCursor = idx === cursor;
+      const num = o.numbers ? h('span', { class: 'num', 'aria-hidden': 'true' }, idx) : null;
+      const cls = 'ring' + (corner ? ' corner' : ' slot') + (isCursor ? ' cursor' : '') + (idx === o.target && !isCursor ? ' target' : '') + (path.has(idx) && !isCursor && idx !== o.target ? ' path' : '');
+      if (corner) {
+        const c = h('div', { class: cls, 'data-ring': idx }, num);
+        if (isCursor) c.append(tileEl(s.held)); else if (path.has(idx) || idx === o.target) c.style.borderColor = 'var(--ink)'; else if (o.numbers) c.style.borderColor = 'var(--hair)';
+        board.append(c); continue;
+      }
+      const slot = ringSlot(s, idx), dir = slotDirection(s, slot), d = walkDistance(s, slot);
+      const b = h('button', { class: cls, 'data-slot': slot, 'data-ring': idx, disabled: !interactive, tabindex: interactive ? null : '-1',
+        'aria-label': interactive ? `Pousser ${DIR_NAME[dir]} depuis la case ${slot}, marche ${d}, coût ${d + 1} coups` : `Case de poussée ${slot}` }, num);
+      b.append(isCursor ? tileEl(s.held) : h('span', { class: 'arrow', 'aria-hidden': 'true' }, ARROW[dir]));
+      board.append(b);
+    }
+    this.wrap.replaceChildren(board);
+    this.wrap.classList.toggle('withlabels', this.showCosts && !isWon(s));
+    if (this.showCosts && !isWon(s)) this.labels(board);
+    this.info();
+  }
+  labels(board) {
+    const s = this.s, d = nearnessDetail(s), L = h('div', { class: 'labels', 'aria-hidden': 'true' });
+    for (let i = 0; i < s.rows; i++) { const r = s.rows - 1 - i; L.append(h('span', { class: d.useRows && d.kept.includes(r) ? 'kept' : '', style: `left:calc(var(--step)*${s.cols + 2} + 6px);top:calc(var(--step)*${i + 1} + 8px)` }, d.rowCosts[r])); }
+    for (let j = 0; j < s.cols; j++) L.append(h('span', { class: !d.useRows && d.kept.includes(j) ? 'kept' : '', style: `left:calc(var(--step)*${j + 1} + (var(--cell) - 24px) / 2);top:calc(var(--step)*${s.rows + 2} + 2px)` }, d.colCosts[j]));
+    this.wrap.append(L);
+    const cell = getComputedStyle(board).getPropertyValue('--cell') || '40px';
+    L.style.cssText = `--cell:${cell};--step:calc(${cell} + 3px)`;
+    this.labelsEl = L;
+  }
+  // Marche jusqu'à la case, pousse, montre les lignes qui vont disparaître, puis les retire
+  // Tant qu'une animation tourne, les autres sections n'ont pas le droit de reprendre la grille
+  async holdWhile(fn) { this.holds++; try { return await fn(); } finally { this.holds--; if (!this.holds && this.pending) { const p = this.pending; this.pending = null; p.refresh(); } } }
+  async playAction(slot) {
+    return this.holdWhile(() => this.playAction1(slot));
+  }
+  async playAction1(slot) {
+    const s = this.s; if (this.busy || isWon(s)) return [];
+    this.busy = true;
+    const letters = slotLetters(s, slot), walk = letters.slice(0, -1), pushL = letters.slice(-1);
+    for (const l of walk) { step(s, LET.indexOf(l)); this.moves++; this.letters += l; this.render(); await wait(70); }
+    step(s, LET.indexOf(pushL), null, true); this.moves++; this.letters += pushL;
+    const lines = uniformLinesOf(s);
+    this.flash = new Set(lines.map(l => (l.kind === 'row' ? 'r' : 'c') + l.index)); this.render();
+    if (lines.length) await wait(560);
+    const removed = []; evaluate(s, removed); this.flash = new Set();
+    this.busy = false; this.render();
+    return removed;
+  }
+  async walk(letters) { return this.holdWhile(() => this.walk1(letters)); }
+  async walk1(letters) {
+    const s = this.s; this.busy = true;
+    for (const l of letters) { step(s, LET.indexOf(l)); this.moves++; this.letters += l; this.render(); await wait(120); }
+    this.busy = false; this.render();
+  }
+  async playLetters(letters, { from } = {}) {
+    return this.holdWhile(async () => {
+      if (from) this.show(from.state, from.o || {});
+      for (const a of decompose(CANVA, letters)) { await this.playAction(a.slot); await wait(180); }
+    });
+  }
+}
+
+/* ---------- Étapes guidées ---------- */
+// steps : [{ title, body() -> html, extra() -> Node, from(), animate() async, show() }]
+function stepper(mount, steps) {
+  let i = -1, token = 0;
+  const bar = h('i'), count = h('span', {}), title = h('h3', { class: 'sttitle' }), body = h('div', { class: 'stbody' }), extra = h('div', { class: 'stextra' });
+  const dots = h('div', { class: 'dots', role: 'group', 'aria-label': 'Étapes' }, steps.map((s, k) => h('button', { 'aria-label': `Étape ${k + 1} : ${s.title}`, onclick: () => go(k, false) })));
+  const prev = h('button', { class: 'btn', onclick: () => go(i - 1, false) }, '← Précédent');
+  const replay = h('button', { class: 'btn', onclick: () => go(i, true) }, 'Rejouer');
+  const next = h('button', { class: 'btn primary', onclick: () => go(i + 1, true) }, 'Suivant →');
+  mount.append(h('div', { class: 'stepper' }, h('div', { class: 'sthead' }, count, h('div', { class: 'stbar' }, bar)), dots, title, body, extra, h('div', { class: 'stnav' }, prev, h('span', { class: 'grow' }), replay, next)));
+  async function go(k, forward) {
+    if (k < 0 || k >= steps.length) return;
+    const t = ++token, st = steps[k]; i = k;
+    count.textContent = `Étape ${k + 1} sur ${steps.length}`; bar.style.width = ((k + 1) / steps.length * 100) + '%';
+    title.textContent = st.title; body.innerHTML = st.body();
+    extra.replaceChildren(...(st.extra ? [st.extra()] : []));
+    [...dots.children].forEach((d, j) => { if (j === k) d.setAttribute('aria-current', 'step'); else d.removeAttribute('aria-current'); });
+    prev.disabled = k === 0; next.disabled = k === steps.length - 1; replay.hidden = !st.animate;
+    if (forward && st.animate) {
+      prev.disabled = next.disabled = replay.disabled = true;
+      await view.holdWhile(async () => { st.from && st.from(); await wait(250); await st.animate(); if (t === token) st.show(); });
+      if (t === token) { prev.disabled = k === 0; next.disabled = k === steps.length - 1; replay.disabled = false; }
+    } else st.show();
+  }
+  return { go: k => go(k, false), refresh: () => { if (i >= 0) steps[i].show(); }, get index() { return i; } };
+}
+
+// Quand une section passe au milieu de l'écran, la grille revient à son état
+const sections = [];
+function register(id, refresh) { sections.push({ el: document.getElementById(id), refresh }); }
+function watchSections() {
+  const io = new IntersectionObserver(entries => { for (const e of entries) if (e.isIntersecting) { const s = sections.find(x => x.el === e.target); if (!s) continue; if (view.holds || view.busy) view.pending = s; else s.refresh(); } }, { rootMargin: '-30% 0px -55% 0px' });
+  sections.forEach(s => io.observe(s.el));
+}
+/* ---------- Les données de la grille d'exemple ---------- */
+const SOL = solveExact(CANVA).solution;          // 'uruuuldrul', 10 coups
+const FR = framesOf(CANVA, SOL);                 // l'état après chaque coup
+const ACTIONS = decompose(CANVA, SOL);           // 4 poussées, chacune avec sa marche
+const ACTION_END = []; { let n = 0; for (const a of ACTIONS) { n += a.cost; ACTION_END.push(n); } } // coups cumulés : 2, 6, 8, 10
+const EX = exactTrace(CANVA);                    // l'exploration complète de l'exact
+const OPTIMUM = SOL.length;
+const ord = n => ['première', 'deuxième', 'troisième', 'quatrième'][n - 1] || n + 'e';
+const ringOf = (st) => ringIndex(st, st.x, st.y);
+let view;
+
+/* ---------- Terrain ---------- */
+function initTerrain(mount) {
+  const F = FR.states;
+  const showF = (k, o = {}) => view.show(F[k], { chip: 'Terrain', step: `après ${plural(k, 'coup', 'coups')}`, moves: k, letters: SOL.slice(0, k), ...o });
+  const removedOf = a => FR.moves[ACTION_END[a] - 1].removed;
+  const colsText = removed => removed.map(r => (r.kind === 'row' ? `la rangée ${rowWord(r.index)}` : `la ${ord(r.index + 1)} colonne en partant de la gauche`)).join(', puis ');
+  // Jeu libre
+  const free = { state: cloneState(F[0]), moves: 0, letters: '', stack: [] };
+  let freeMsg;
+  const freeShow = () => view.show(free.state, { chip: 'À vous', step: `${plural(free.moves, 'coup', 'coups')}`, moves: free.moves, letters: free.letters, onSlot: freePlay,
+    note: isWon(free.state) ? '' : 'Cliquez une case de l\'anneau.' });
+  const freeText = () => { freeMsg.innerHTML = isWon(free.state) ? `<strong>Gagné en ${free.moves} coups.</strong> ${free.moves === OPTIMUM ? 'C\'est l\'optimum.' : `L'optimum est ${OPTIMUM}.`}` : `${plural(free.moves, 'coup joué', 'coups joués')}. L'optimum est ${OPTIMUM}.`; };
+  async function freePlay(slot) {
+    free.stack.push({ state: cloneState(free.state), moves: free.moves, letters: free.letters });
+    await view.playAction(slot);
+    free.state = cloneState(view.s); free.moves = view.moves; free.letters = view.letters;
+    view.stepEl.textContent = plural(free.moves, 'coup', 'coups'); freeText();
+  }
+  const steps = [
+    { title: 'La grille et la tuile en main',
+      body: () => `<p>C'est la grille <code>4x4:a</code>. Elle a quatre couleurs, et chaque couleur a sa forme : ${ichip(1)} rond rouge, ${ichip(2)} carré bleu, ${ichip(3)} triangle vert, ${ichip(4)} losange jaune.</p><p>Autour de la grille, la couronne en pointillé est l'<strong>anneau</strong> : c'est le seul endroit où le curseur peut aller. Il démarre dans le coin en bas à gauche et tient un ${ichip(1)}. Sa solution la plus courte fait ${OPTIMUM} coups : c'est elle que nous suivons.</p>`,
+      show: () => showF(0, { step: 'grille de départ' }) },
+    { title: 'L\'anneau : 20 cases, dont 16 pour pousser',
+      body: () => `<p>Les cases de l'anneau sont numérotées de 0 à 19 dans le sens des aiguilles d'une montre, depuis le coin bas gauche. Les quatre coins (0, 5, 10 et 15) servent seulement à passer d'un bord à l'autre.</p><p>Les 16 autres cases, avec une flèche, sont les <strong>cases de poussée</strong> : on y pousse la tuile en main vers l'intérieur. Une grille 8×8 a 36 cases d'anneau et 32 cases de poussée.</p>`,
+      show: () => showF(0, { numbers: true, step: 'anneau numéroté' }) },
+    { title: 'Marcher : un coup, la grille ne bouge pas',
+      body: () => `<p>Le curseur monte d'une case le long du bord gauche : un coup. Il est maintenant sur la case 19. Les tuiles n'ont pas bougé.</p><p><strong>Marcher ne change jamais la grille.</strong> C'est pourquoi le solveur ne cherche pas où marcher mais où pousser, et compte la marche comme un coût.</p>`,
+      from: () => showF(0, { numbers: true }), animate: () => view.walk(SOL[0]),
+      show: () => showF(1, { numbers: true, path: [ringOf(F[0]), ringOf(F[1])], step: 'après 1 coup (une marche)' }) },
+    { title: 'Pousser : une tuile entre, une autre sort',
+      body: () => { const b = Array.from(F[1].cells.subarray(0, 4)), a = Array.from(F[2].cells.subarray(0, 4)); return `<p>Le curseur pousse vers la droite. La rangée du bas ${ichips(b)} reçoit ${ichip(F[1].held)} par la gauche et devient ${ichips(a)}.</p><p>La tuile qui sort par la droite, ${ichip(F[2].held)}, est maintenant dans la main du curseur, qui a sauté sur le bord opposé. Cette première action coûte ${ACTIONS[0].cost} coups : ${plural(ACTIONS[0].walk.length, 'pas de marche', 'pas de marche')} et une poussée.</p>`; },
+      from: () => showF(1), animate: () => view.playAction(ACTIONS[0].slot), show: () => showF(2, { step: 'après la 1re action' }) },
+    { title: 'Une ligne uniforme disparaît',
+      body: () => { const rem = removedOf(1); return `<p>Le curseur marche de ${ACTIONS[1].walk.length} cases le long du bord droit, puis pousse vers la gauche dans la rangée du haut : ${ACTIONS[1].cost} coups. Juste après la poussée, ${colsText(rem)} ne contient plus que des ${ichip(1)} : elle disparaît.</p><p>La grille passe de 4×4 à 4×3. Total : ${ACTION_END[1]} coups. Retirer des lignes est le seul moyen d'avancer vers la victoire, qui demande de n'en garder qu'une.</p>`; },
+      from: () => showF(ACTION_END[0]), animate: () => view.playAction(ACTIONS[1].slot), show: () => showF(ACTION_END[1], { step: 'après la 2e action' }) },
+    { title: 'Deux suppressions à la suite, puis la victoire',
+      body: () => `<p>Troisième action : un pas vers le bas, puis une poussée vers la droite (${ACTIONS[2].cost} coups). Rien ne disparaît, mais la grille se prépare.</p><p>Quatrième action : un pas vers le haut, puis une poussée vers la gauche (${ACTIONS[3].cost} coups). Cette fois ${colsText(removedOf(3))} disparaissent l'une après l'autre. Il ne reste qu'une colonne : <strong>gagné en ${OPTIMUM} coups</strong>, avec 4 poussées seulement. Les autres coups sont de la marche.</p>`,
+      from: () => showF(ACTION_END[1]), animate: async () => { await view.playAction(ACTIONS[2].slot); await wait(250); await view.playAction(ACTIONS[3].slot); },
+      show: () => showF(OPTIMUM, { step: 'gagné en 10 coups' }) },
+    { title: 'À vous de jouer',
+      body: () => `<p>La grille est maintenant jouable : cliquez une case de l'anneau. Le curseur y marche par le plus court chemin, puis pousse. Essayez de faire mieux que ${OPTIMUM} coups : c'est impossible, l'exact l'a prouvé.</p>`,
+      extra: () => { freeMsg = h('p', { class: 'statusline', 'aria-live': 'polite' }); freeText();
+        return h('div', { style: 'display:flex;flex-direction:column;gap:8px' }, freeMsg, h('div', { class: 'ctrl' },
+          h('button', { class: 'btn', onclick: () => { Object.assign(free, { state: cloneState(F[0]), moves: 0, letters: '', stack: [] }); freeShow(); freeText(); } }, 'Recommencer'),
+          h('button', { class: 'btn', onclick: () => { const l = free.stack.pop(); if (l) { Object.assign(free, l); freeShow(); freeText(); } } }, 'Annuler'),
+          h('button', { class: 'btn', onclick: () => view.holdWhile(async () => { Object.assign(free, { state: cloneState(F[0]), moves: 0, letters: '', stack: [] }); freeShow(); freeText(); await wait(300); for (const a of ACTIONS) { await freePlay(a.slot); await wait(200); } }) }, 'Jouer l\'optimum'))); },
+      show: () => freeShow() },
+  ];
+  const st = stepper(mount, steps); st.go(0);
+  register('terrain', () => st.refresh());
+}
+
+/* ---------- Coût ---------- */
+function initCost(mount) {
+  const F = FR.states;
+  const showC = (k, o = {}) => view.show(F[k], { chip: 'Coût', step: `après ${plural(k, 'coup', 'coups')}`, moves: k, letters: SOL.slice(0, k), ...o });
+  const det0 = nearnessDetail(F[0]);
+  const lineName = (kind, i) => kind === 'row' ? `rangée ${rowWord(i)}` : `colonne ${i + 1}`;
+  const w = { tile: WTILE, move: WMOVE };
+  const labCost = k => F[k].rows * F[k].cols * w.tile + nearness(F[k]) + k * w.move;
+  const dropAt = F.findIndex(s => s.rows * s.cols < F[0].rows * F[0].cols);
+  let lab = null, labK = 0;
+  function buildLab() {
+    const formula = h('div', { class: 'formula', 'aria-live': 'polite' }), chartMount = h('div', {});
+    const draw = () => {
+      const k = labK, s = F[k], won = isWon(s);
+      formula.textContent = won ? `gagné en ${k} coups` : `coût = ${w.tile} × ${s.rows * s.cols} tuiles + ${nearness(s)} proximité + ${w.move} × ${k} coups = ${labCost(k)}`;
+      const pts = []; for (let j = 0; j < OPTIMUM; j++) pts.push([j, labCost(j)]);
+      const ys = pts.map(p => p[1]);
+      chartMount.replaceChildren(chartBox('Coût après chaque coup de l\'optimum', won ? 'gagné' : `coup ${k} : ${labCost(k)}`, lineChart(pts, { xmax: OPTIMUM, ymin: Math.min(...ys) - 4, ymax: Math.max(...ys) + 4, mark: won ? null : k, label: 'Coût de la position après chaque coup de la solution optimale', hgt: 90 })));
+      showC(k, { step: `après ${plural(k, 'coup', 'coups')} de l'optimum` });
+    };
+    const scrub = h('input', { type: 'range', min: 0, max: OPTIMUM, value: labK, 'aria-label': 'Coup de la solution optimale', oninput: e => { labK = Number(e.target.value); draw(); } });
+    const slider = (key, label, min, max, stp) => { const out = h('b', {}, String(w[key])); return h('label', { class: 'field grow' }, h('span', {}, label + ' : ', out), h('input', { type: 'range', min, max, step: stp, value: w[key], 'aria-label': label, oninput: e => { w[key] = Number(e.target.value); out.textContent = e.target.value; draw(); } })); };
+    const root = h('div', { style: 'display:flex;flex-direction:column;gap:10px' }, h('label', { class: 'field' }, 'Coup de la solution optimale', scrub), formula, h('div', { class: 'row' }, slider('tile', 'Poids d\'une tuile', 0, 16, 1), slider('move', 'Poids d\'un coup', 0, 3, 0.5)), chartMount);
+    return { root, draw };
+  }
+  const steps = [
+    { title: 'Pourquoi un coût',
+      body: () => `<p>Les méthodes approchées gardent certaines positions et en jettent d'autres, alors que la partie n'est pas finie. Il leur faut un chiffre pour classer deux positions.</p><p>Compter les tuiles restantes ne suffit pas : sur cette grille il y en a 16, puis 12, puis 4, et tant qu'aucune ligne ne disparaît, ce nombre ne bouge pas. Pendant ${dropAt - 1} coups de l'optimum, il reste à 16. Il faut un chiffre qui descend <em>avant</em> la disparition d'une ligne.</p>`,
+      show: () => { view.setCosts(false); showC(0, { step: 'grille de départ' }); } },
+    { title: 'Le coût d\'une ligne',
+      body: () => `<p>Pour une ligne, on compte ses tuiles qui ne sont pas de la couleur majoritaire : c'est ce qu'il faudrait changer pour qu'elle soit uniforme.</p><p>Les chiffres sont maintenant affichés autour de la grille : à droite le coût de chaque rangée, en bas celui de chaque colonne. Rangées, du bas vers le haut : <strong>${det0.rowCosts.join(', ')}</strong>. Colonnes, de gauche à droite : <strong>${det0.colCosts.join(', ')}</strong>. La deuxième rangée en partant du bas, ${ichips(Array.from(F[0].cells.subarray(4, 8)))}, n'a aucune couleur majoritaire : 3 tuiles à changer.</p>`,
+      show: () => { view.setCosts(true); showC(0, { step: 'coût de chaque ligne' }); } },
+    { title: 'La proximité',
+      body: () => `<p>Pour gagner, il faut retirer ${F[0].rows - 1} rangées (ou ${F[0].cols - 1} colonnes) : il n'en reste qu'une. On additionne donc les ${F[0].rows - 1} lignes les moins chères, et on prend le meilleur résultat entre rangées et colonnes.</p><p>Rangées : ${det0.rowsSum}. Colonnes : ${det0.colsSum}. La <strong>proximité</strong> est le plus petit des deux : <strong>${det0.value}</strong>. Les chiffres soulignés sur la grille sont ceux qui sont comptés.</p>`,
+      show: () => { view.setCosts(true); showC(0, { step: 'proximité = ' + det0.value }); } },
+    { title: 'Le coût d\'une position',
+      body: () => `<p>Le coût final additionne trois choses : ${WTILE} × les tuiles restantes, la proximité, et ${WMOVE} × les coups déjà joués. Au départ : ${WTILE} × 16 + ${det0.value} + 0 = <strong>${16 * WTILE + det0.value}</strong>.</p><p>Chaque coup coûte ${WMOVE}, donc une simple marche fait monter le coût : après le premier pas, ${16 * WTILE + nearness(F[1]) + 1}. Une position n'est préférée que si elle fait baisser autre chose de plus que ce qu'elle coûte en coups.</p>`,
+      from: () => showC(0), animate: () => view.walk(SOL[0]), show: () => { view.setCosts(true); showC(1); } },
+    { title: 'Suivre le coût le long de l\'optimum',
+      body: () => `<p>Faites glisser le curseur : la grille rejoue l'optimum coup par coup et le coût se met à jour. Il monte pendant la marche, redescend un peu quand la proximité baisse, puis <strong>chute au coup ${dropAt}</strong> : une colonne disparaît, 4 tuiles en moins, soit 32 de moins sur le coût.</p><p>Changez les poids. Sur cette petite grille, même un poids de coup de 3 laisse le coût du coup ${dropAt} sous celui du départ, donc le chemin reste rentable. Sur de grandes grilles, où atteindre une ligne demande une longue marche, ce n'est plus vrai : dans les mesures sur 8×8, des poids de coup de 2 et plus empêchent de gagner certaines grilles.</p>`,
+      extra: () => { lab = buildLab(); return lab.root; }, show: () => { view.setCosts(true); if (lab) lab.draw(); else showC(0); } },
+  ];
+  const st = stepper(mount, steps); st.go(0);
+  register('cout', () => st.refresh());
+}
+/* ---------- Exact : l'exploration, position par position ---------- */
+function initExact(mount) {
+  const E = EX.events, last = E.length - 1;
+  let idx = 0, pinned = -1, timer = null, speed = 200;
+  const firstNext = E.findIndex(e => e.d > 0), firstDup = E.findIndex(e => e.children.some(c => c.status === 'seen'));
+  // Positions par seau sur toute l'exploration, pour fixer l'échelle du graphique
+  const finalFound = [], finalExp = [];
+  finalFound[0] = 1;
+  for (const e of E) { if (e.kind === 'expand') finalExp[e.d] = (finalExp[e.d] || 0) + 1; for (const c of e.children) if (c.status !== 'seen') finalFound[c.cost] = (finalFound[c.cost] || 0) + 1; }
+  const maxBucket = Math.max(...finalFound.filter(Boolean), ...finalExp.filter(Boolean)), dMax = finalFound.length - 1;
+
+  const status = h('p', { class: 'statusline', 'aria-live': 'polite' }), chart = h('div'), kids = h('div'), kidsHead = h('p', { class: 'statusline' });
+  const slider = h('input', { type: 'range', min: 0, max: last, value: 0, 'aria-label': 'Position explorée', oninput: e => goto(Number(e.target.value)) });
+  const playBtn = h('button', { class: 'btn primary', onclick: () => togglePlay() }, '▶ Lire');
+  const speedSel = h('select', { 'aria-label': 'Vitesse', onchange: e => { speed = Number(e.target.value); if (timer) { stop(); togglePlay(); } } },
+    h('option', { value: 600 }, 'Lent'), h('option', { value: 200, selected: true }, 'Moyen'), h('option', { value: 25 }, 'Rapide'));
+  const ctrl = h('div', { class: 'ctrl' },
+    h('button', { class: 'btn', 'aria-label': 'Début', onclick: () => goto(0) }, '⏮'), h('button', { class: 'btn', 'aria-label': 'Position précédente', onclick: () => goto(idx - 1) }, '◀'), playBtn,
+    h('button', { class: 'btn', 'aria-label': 'Position suivante', onclick: () => goto(idx + 1) }, '▶'),
+    h('button', { class: 'btn', onclick: () => goto(nextBucket()) }, 'Seau suivant'), h('button', { class: 'btn', onclick: () => goto(last) }, 'Victoire'), speedSel);
+  mount.append(h('div', { class: 'panel' }, ctrl, slider, status, chart, kidsHead, kids));
+  const nextBucket = () => { const d = E[idx].d; const j = E.findIndex((e, k) => k > idx && e.d > d); return j < 0 ? last : j; };
+  function stop() { if (timer) { clearInterval(timer); timer = null; playBtn.textContent = '▶ Lire'; } }
+  function togglePlay() {
+    if (timer) return stop();
+    if (idx >= last) goto(0);
+    playBtn.textContent = '⏸ Pause';
+    timer = setInterval(() => { if (idx >= last) return stop(); goto(idx + 1, true); }, speed);
+  }
+  function goto(k, keepPlaying) {
+    if (!keepPlaying) stop();
+    idx = Math.max(0, Math.min(last, k)); pinned = -1; slider.value = idx; draw();
+  }
+  function buckets() {
+    const found = [1], exp = []; // le départ est déjà rangé dans le seau 0
+    for (let j = 0; j <= idx; j++) { const e = E[j]; if (e.kind === 'expand') exp[e.d] = (exp[e.d] || 0) + 1; for (const c of e.children) if (c.status !== 'seen') found[c.cost] = (found[c.cost] || 0) + 1; }
+    return { found, exp };
+  }
+  function draw() {
+    const e = E[idx], { found, exp } = buckets(), isWin = e.kind === 'win';
+    view.show(e.state, { chip: 'Exact', step: `position ${idx + 1} / ${E.length} · seau ${e.d}`, moves: e.d, letters: e.path,
+      note: isWon(e.state) ? `Une position gagnante sort du seau ${e.d} : c'est l'optimum.` : `Cette position coûte ${e.d} coups depuis le départ.` });
+    const done = exp.reduce((a, b) => a + (b || 0), 0), known = found.reduce((a, b) => a + (b || 0), 0);
+    status.innerHTML = isWin ? `<strong>Victoire.</strong> Une position gagnante sort du seau ${e.d}, après ${plural(EX.expansions, 'position développée', 'positions développées')}. Plus aucune position moins chère n'attend : ${e.d} coups est l'optimum.`
+      : `Position <strong>${idx + 1}</strong> sur ${E.length}, du seau <strong>${e.d}</strong>. Développées jusqu'ici : ${fmt(done)}. Rangées dans un seau : ${fmt(known)}.`;
+    const bars = h('div', { class: 'bars', role: 'img', 'aria-label': 'Positions par seau' }), labs = h('div', { class: 'axislabels', 'aria-hidden': 'true' });
+    for (let d = 0; d <= dMax; d++) {
+      bars.append(h('div', { class: 'bar' + (d > e.d ? ' off' : ''), title: `seau ${d} : ${exp[d] || 0} développées, ${found[d] || 0} rangées` },
+        h('i', { class: 'found', style: `height:${((found[d] || 0) / maxBucket) * 100}%` }), h('i', { class: 'done', style: `height:${((exp[d] || 0) / maxBucket) * 100}%` })));
+      labs.append(h('span', { style: d === e.d ? 'font-weight:800;color:var(--ink)' : '' }, d));
+    }
+    chart.replaceChildren(h('div', { class: 'chartbox' }, h('div', { class: 'cap' }, h('span', {}, 'Seaux (coups depuis le départ)'), h('span', {}, 'foncé : développées · clair : rangées')), bars, labs));
+    if (isWin) { kidsHead.textContent = 'Le chemin trouvé : ' + e.path; kids.replaceChildren(); return; }
+    const seen = e.children.filter(c => c.status === 'seen').length, costs = e.children.map(c => c.cost);
+    kidsHead.innerHTML = `<strong>Les 16 enfants</strong> : pousser dans chaque case. Coûts de ${Math.min(...costs)} à ${Math.max(...costs)} coups. ${e.children.length - seen ? plural(e.children.length - seen, 'rangé dans un seau', 'rangés dans un seau') : 'Aucun rangé dans un seau'}, ${plural(seen, 'ignoré', 'ignorés')} car déjà rencontrés à coût égal ou moindre. Cliquez-en un pour le voir sur la grille.`;
+    kids.className = 'minis';
+    kids.replaceChildren(...e.children.map((c, k) => miniButton(c.state, { top: `case ${c.slot}`, bottom: `coût ${c.cost}${c.status === 'seen' ? ' · déjà vue' : c.status === 'cheaper' ? ' · moins chère' : ''}${c.won ? ' · gagne' : ''}`,
+      cls: (c.status === 'seen' ? 'seen ' : '') + (c.won ? 'win' : ''), pressed: pinned === k, label: `Enfant case ${c.slot}, coût ${c.cost}`,
+      onclick: () => { pinned = pinned === k ? -1 : k; draw2(); } })));
+  }
+  function draw2() {
+    const e = E[idx];
+    if (pinned < 0) { view.show(e.state, { chip: 'Exact', step: `position ${idx + 1} / ${E.length} · seau ${e.d}`, moves: e.d, letters: e.path, note: `Cette position coûte ${e.d} coups depuis le départ.` }); }
+    else { const c = e.children[pinned]; view.show(c.state, { chip: 'Exact', step: `enfant de la position ${idx + 1} : case ${c.slot}`, moves: c.cost, letters: e.path + slotLetters(e.state, c.slot), note: `Marche ${c.walk}, poussée 1 : cet enfant coûte ${c.cost} coups. ${c.status === 'seen' ? 'Déjà rencontré, il est ignoré.' : 'Il est rangé dans le seau ' + c.cost + '.'}` }); }
+    [...kids.children].forEach((b, k) => b.setAttribute('aria-pressed', String(k === pinned)));
+  }
+  // Étapes guidées
+  const cnt = d => E.filter(e => e.d === d && e.kind === 'expand').length;
+  const costsOfRoot = E[0].children.map(c => c.cost), minC = Math.min(...costsOfRoot);
+  const steps = [
+    { title: 'Le seau 0 : le départ', body: () => `<p>L'exact range les positions par <strong>nombre de coups depuis le départ</strong>, dans des seaux numérotés. Au début, le seau 0 ne contient qu'une position : la grille de départ, que vous voyez à côté.</p><p>L'algorithme vide les seaux dans l'ordre : 0, puis 1, puis 2, et ainsi de suite. Tout ce qui sort d'un seau est « développé ».</p>`,
+      show: () => goto(0) },
+    { title: 'Développer une position', body: () => { const counts = {}; costsOfRoot.forEach(c => counts[c] = (counts[c] || 0) + 1); return `<p>Développer une position, c'est la pousser dans chacune des 16 cases de poussée. Chaque enfant coûte la marche jusqu'à la case plus 1 pour la poussée. Pour le départ, les enfants coûtent de ${minC} à ${Math.max(...costsOfRoot)} coups : ${Object.keys(counts).map(c => `${counts[c]} dans le seau ${c}`).join(', ')}.</p><p>Chaque enfant est affiché dessous, avec le curseur là où il atterrit. Cliquez-en un pour le voir sur la grille.</p>`; },
+      show: () => goto(0) },
+    { title: 'Passer au seau suivant', body: () => `<p>Le seau 0 est maintenant vide. L'exact passe au premier seau qui contient quelque chose : le seau ${E[firstNext].d}, avec ${plural(cnt(E[firstNext].d), 'position', 'positions')}. Elles sont toutes développées avant de passer au seau ${E[firstNext].d + 1}.</p><p>C'est ce qui garantit le résultat : on ne peut pas trouver une victoire longue avant une courte, puisque les seaux sont vidés par ordre de coups. Utilisez « Seau suivant » pour voir chaque seau se remplir et se vider.</p>`,
+      show: () => goto(firstNext) },
+    { title: 'Ne jamais revoir une position', body: () => { const e = E[firstDup], n = e.children.filter(c => c.status === 'seen').length, same = Array.from(e.state.cells).join() === Array.from(createState(CANVA).cells).join(); return `<p>Cette position (n°${firstDup + 1}, seau ${e.d}) a ${plural(n, 'enfant', 'enfants')} sur 16 déjà rencontrés à un coût égal ou moindre : ils apparaissent grisés et ne sont pas rangés dans un seau.</p><p>${same ? `La raison se lit dans son chemin, <code>${e.path}</code> : le curseur marche, pousse une colonne vers le haut, puis la repousse vers le bas. <strong>Une poussée suivie de la poussée inverse ramène exactement la grille de départ</strong>, seul le curseur a bougé. Tous ses enfants sont donc des positions que le départ avait déjà produites, en moins de coups.` : 'Une même position se retrouve par des chemins très différents.'}</p><p>Sans cette règle, le nombre de positions exploserait. Une position est reconnue par sa grille, la place du curseur et la tuile en main.</p>`; },
+      show: () => goto(firstDup) },
+    { title: 'La première victoire est l\'optimum', body: () => `<p>Après ${plural(EX.expansions, 'position développée', 'positions développées')}, une position gagnante sort du seau ${OPTIMUM}. Comme tous les seaux plus petits ont été vidés sans victoire, aucune solution n'est plus courte : <strong>${OPTIMUM} coups est l'optimum</strong>.</p><p>Le chemin : <code>${SOL}</code>. En 5×5, la même méthode développe environ 70 000 positions (4 secondes). Au-delà le nombre de positions explose : elle abandonne et ne donne qu'une borne basse.</p>`,
+      from: () => view.show(createState(CANVA), { chip: 'Exact', step: 'le chemin trouvé', moves: 0, letters: '' }), animate: () => view.playLetters(SOL), show: () => goto(last) },
+  ];
+  const holder = h('div'); mount.prepend(holder);
+  const st = stepper(holder, steps); st.go(0);
+  register('exact', () => draw());
+}
+
+/* ---------- Faisceau : couche par couche ---------- */
+function initBeam(mount) {
+  const cache = {}, trace = w => cache[w] ||= beamTrace(CANVA, w);
+  let W = 5, L = 1, sel = 0, timer = null;
+  const status = h('p', { class: 'statusline', 'aria-live': 'polite' }), keptBox = h('div'), keptHead = h('p', { class: 'statusline' }), winBox = h('div'), tableBox = h('div');
+  const slider = h('input', { type: 'range', min: 1, max: 1, value: 1, 'aria-label': 'Couche', oninput: e => setLayer(Number(e.target.value)) });
+  const chipsBox = h('div', { class: 'chips', role: 'group', 'aria-label': 'Largeur du faisceau' });
+  const playBtn = h('button', { class: 'btn primary', onclick: () => togglePlay() }, '▶ Lire');
+  const drawChips = () => chipsBox.replaceChildren(...[3, 5, 10, 25].map(w => h('button', { class: 'btn', 'aria-pressed': w === W, onclick: () => setWidth(w) }, 'W = ' + w)));
+  mount.append(h('div', { class: 'panel' }, h('div', { class: 'ctrl' }, h('span', { class: 'small muted' }, 'Largeur'), chipsBox), h('div', { class: 'ctrl' }, h('button', { class: 'btn', onclick: () => setLayer(L - 1) }, '◀'), playBtn, h('button', { class: 'btn', onclick: () => setLayer(L + 1) }, '▶')), slider, status, keptHead, keptBox, winBox, tableBox));
+  const T = () => trace(W), layer = () => T().layers[L - 1];
+  function stop() { if (timer) { clearInterval(timer); timer = null; playBtn.textContent = '▶ Lire'; } }
+  function togglePlay() { if (timer) return stop(); if (L >= T().layers.length) { L = 1; sel = 0; } playBtn.textContent = '⏸ Pause'; timer = setInterval(() => { if (L >= T().layers.length) return stop(); setLayer(L + 1, true); }, 700); draw(); }
+  function setWidth(w) { stop(); W = w; L = Math.min(L, T().layers.length); sel = 0; drawChips(); draw(); }
+  function setLayer(k, keep) { if (!keep) stop(); L = Math.max(1, Math.min(T().layers.length, k)); sel = 0; draw(); }
+  const slots = () => slotCount(createState(CANVA));
+  function draw() {
+    const t = T(), ly = layer(), kept = ly.kept; slider.max = t.layers.length; slider.value = L;
+    const win = ly.wins.length ? ly.wins.reduce((a, b) => b.moves < a.moves ? b : a) : null;
+    const root = createState(CANVA);
+    if (kept[sel]) view.show(kept[sel].state, { chip: `Faisceau W=${W}`, step: `couche ${L} / ${t.layers.length} · rang ${sel + 1}`, moves: kept[sel].moves, letters: kept[sel].letters,
+      note: `Coût ${WTILE} × ${kept[sel].tiles} + ${kept[sel].near} + ${kept[sel].moves} = ${kept[sel].cost}.` });
+    else if (win) view.show(framesOf(CANVA, win.letters).states.at(-1), { chip: `Faisceau W=${W}`, step: `couche ${L} : victoire`, moves: win.moves, letters: win.letters });
+    else view.show(root, { chip: `Faisceau W=${W}`, step: `couche ${L}`, moves: 0 });
+    status.innerHTML = `<strong>Couche ${L}</strong> sur ${t.layers.length}. ${plural(ly.from, 'position gardée', 'positions gardées')} poussées chacune dans toutes leurs cases (16 au départ, moins quand une ligne a disparu) : ${plural(ly.tried + ly.pruned, 'poussée', 'poussées')}${ly.pruned ? `, dont ${ly.pruned} écartées (elles ne peuvent plus battre la meilleure solution)` : ''}. ${ly.dupes} donnent une position déjà rencontrée, ${ly.candidates} sont nouvelles${win ? `, ${plural(ly.wins.length, 'gagne', 'gagnent')}` : ''}. ${kept.length ? `Les <strong>${kept.length}</strong> moins chères sont gardées.` : 'Plus rien à garder.'}`;
+    keptHead.textContent = kept.length ? 'Positions gardées, de la moins chère à la plus chère. Cliquez-en une pour la voir sur la grille.' : '';
+    keptBox.className = 'minis';
+    keptBox.replaceChildren(...kept.map((k, i) => miniButton(k.state, { top: `n°${i + 1}`, bottom: `coût ${k.cost} · ${k.tiles} t. · prox. ${k.near} · ${k.moves} coups`, pressed: i === sel, label: `Position gardée ${i + 1}, coût ${k.cost}`, onclick: () => { stop(); sel = i; draw(); } })));
+    winBox.replaceChildren(...(win ? [h('div', { class: 'row' }, h('span', { class: 'statusline' }, `Une poussée gagne à cette couche : `, h('strong', {}, plural(win.moves, 'coup', 'coups')), win.moves === OPTIMUM ? ' (l\'optimum).' : '.'),
+      h('button', { class: 'btn primary', onclick: () => view.playLetters(win.letters, { from: { state: root, o: { chip: `Faisceau W=${W}`, step: 'la solution', moves: 0, letters: '' } } }) }, 'Voir la solution sur la grille'))] : []));
+    drawTable();
+  }
+  function drawTable() {
+    const rows = [3, 5, 10, 25, 50, 100].map(w => { const t = trace(w), fl = t.layers.findIndex(l => l.wins.length) + 1; return { w, best: t.best ? t.best.moves : null, layers: t.layers.length, first: fl, firstMoves: fl ? Math.min(...t.layers[fl - 1].wins.map(x => x.moves)) : null }; });
+    tableBox.replaceChildren(h('h3', { style: 'margin:6px 0' }, 'Effet de la largeur sur cette grille'), h('div', { class: 'tablewrap' }, h('table', {},
+      h('thead', {}, h('tr', {}, h('th', {}, 'largeur'), h('th', { class: 'num' }, 'couches'), h('th', { class: 'num' }, 'première victoire'), h('th', { class: 'num' }, 'meilleure'))),
+      h('tbody', {}, rows.map(r => h('tr', { class: r.w === W ? 'best' : '' }, h('td', {}, 'W = ' + r.w), h('td', { class: 'num' }, r.layers), h('td', { class: 'num' }, r.first ? `couche ${r.first} · ${r.firstMoves} coups` : 'aucune'), h('td', { class: 'num' }, r.best ?? 'aucune')))))),
+      h('p', { class: 'small muted' }, `L'optimum est ${OPTIMUM} coups. Un faisceau étroit perd parfois le bon chemin et trouve plus long, un faisceau large le garde mais coûte plus de temps.`));
+  }
+  drawChips();
+  // Étapes guidées
+  const firstDupL = () => { const i = trace(5).layers.findIndex(l => l.dupes > 0); return i < 0 ? 1 : i + 1; };
+  const firstWinL = w => { const i = trace(w).layers.findIndex(l => l.wins.length); return i < 0 ? trace(w).layers.length : i + 1; };
+  const steps = [
+    { title: 'Une couche', body: () => { const l = trace(5).layers[0]; return `<p>Au départ, une seule position. La couche 1 la pousse dans les ${slots()} cases : ${l.tried} essais, ${l.candidates} positions nouvelles. Elles sont classées par <strong>coût</strong> (la formule de la section précédente) et seules les <strong>W = 5</strong> moins chères sont gardées.</p><p>Les autres ne seront jamais revues : c'est ce qui rend le faisceau rapide, et ce qui lui fait perdre la garantie de l'exact. Les positions gardées sont affichées dessous, de la moins chère à la plus chère.</p>`; },
+      show: () => { stop(); W = 5; L = 1; sel = 0; drawChips(); draw(); } },
+    { title: 'Le tri par coût', body: () => { const l = trace(5).layers[2]; return `<p>À la couche 3, ${l.from} positions sont poussées dans ${slots()} cases : ${l.tried} essais pour ${l.candidates} positions nouvelles, et on n'en garde que ${l.kept.length}. La grille montre la meilleure (n°1) : son coût se lit dans la note sous la grille.</p><p>Chaque vignette indique son coût décomposé : tuiles restantes, proximité et coups joués. Une position avec plus de coups peut passer devant si elle a fait baisser les tuiles ou la proximité.</p>`; },
+      show: () => { stop(); W = 5; L = 3; sel = 0; drawChips(); draw(); } },
+    { title: 'Les doublons', body: () => { const k = firstDupL(), l = trace(5).layers[k - 1]; return `<p>À la couche ${k}, ${l.dupes} poussées donnent une position déjà rencontrée avec autant de coups ou moins. Elles sont jetées avant le tri. Sans cela, plusieurs des W places seraient prises par la même position arrivée par des chemins différents, et le faisceau perdrait en diversité.</p>`; },
+      show: () => { stop(); W = 5; L = firstDupL(); sel = 0; drawChips(); draw(); } },
+    { title: 'Jusqu\'à la victoire', body: () => { const k = firstWinL(5), l = trace(5).layers[k - 1], m = Math.min(...l.wins.map(x => x.moves)); return `<p>À la couche ${k}, ${plural(l.wins.length, 'poussée gagne', 'poussées gagnent')} : la meilleure fait ${m} coups${m === OPTIMUM ? ', ce qui est l\'optimum' : ` (l'optimum est ${OPTIMUM})`}. Le faisceau garde cette solution comme borne et continue : toute position qui ne peut plus la battre est écartée.</p><p>Utilisez le bouton « Voir la solution sur la grille » pour la rejouer coup par coup.</p>`; },
+      show: () => { stop(); W = 5; L = firstWinL(5); sel = 0; drawChips(); draw(); } },
+    { title: 'Élargir le faisceau', body: () => { const r = [3, 5, 10, 25, 50, 100].map(w => ({ w, b: trace(w).best })); const hit = r.find(x => x.b && x.b.moves === OPTIMUM); return `<p>Avec un W plus grand, on garde plus de positions à chaque couche, donc plus de chances de garder le bon chemin. Le tableau ci-dessous compare les largeurs sur cette grille${hit ? `. Ici, W = ${hit.w} suffit pour retrouver l'optimum de ${OPTIMUM} coups` : ''}.</p><p>Cette grille est petite : même une largeur de 3 suffit. Sur 6×6 il faut en général 25 à 200, et sur 10×10 le faisceau est le seul moteur à gagner. Le solveur complet enchaîne des tours de largeur 25, 50, 100, 200… et réutilise la meilleure solution comme borne pour aller plus vite.</p>`; },
+      show: () => { stop(); W = 25; L = firstWinL(25); sel = 0; drawChips(); draw(); } },
+  ];
+  const holder = h('div'); mount.prepend(holder);
+  const st = stepper(holder, steps); st.go(0);
+  register('faisceau', () => draw());
+}
+/* ---------- Génétique ---------- */
+// Joue des gènes (lettres) depuis une position ; renvoie ce qu'il faut pour les afficher
+function evalLetters(state0, baseMoves, letters) {
+  const s = cloneState(state0), states = [cloneState(s)], movesAt = [baseMoves], rows = [];
+  let moves = 0, best = cost(s, baseMoves), used = 0, won = false, acc = '';
+  for (let i = 0; i < letters.length; i++) {
+    const l = letters[i];
+    if (won) { rows.push({ i, l, state: 'après la victoire' }); states.push(cloneState(s)); movesAt.push(baseMoves + moves); continue; }
+    if (!step(s, LET.indexOf(l))) { rows.push({ i, l, state: 'ignoré' }); states.push(cloneState(s)); movesAt.push(baseMoves + moves); continue; }
+    moves++; acc += l; states.push(cloneState(s)); movesAt.push(baseMoves + moves);
+    if (isWon(s)) { won = true; used = i + 1; rows.push({ i, l, state: 'victoire', moves: baseMoves + moves }); continue; }
+    const c = cost(s, baseMoves + moves), better = c < best;
+    if (better) { best = c; used = i + 1; }
+    rows.push({ i, l, state: 'joué', better, tiles: s.rows * s.cols, near: nearness(s), cost: c });
+  }
+  return { rows, states, movesAt, used, best, won, moves: baseMoves + moves, accepted: acc, start: cost(state0, baseMoves) };
+}
+const seqHtml = (letters, used, o = {}) => `<span class="seq">${[...letters].map((l, i) => `<span class="${i < used ? 'used' : 'tail'}${o.cut === i + 1 ? ' cut' : ''}${o.chg && o.chg.has(i) ? ' chg' : ''}">${l}</span>`).join('')}</span>`;
+
+function initGA(mount) {
+  const EXAMPLE = 'luruuuldlrdrlrdldu'; // un coup ignoré, six coups utiles, puis une queue qui n'améliore plus rien
+  const START = createState(CANVA);
+  // --- décodeur d'un génome ---
+  let genome = EXAMPLE, scrub = 0;
+  const dec = { box: h('div', { class: 'panel' }) };
+  const gIn = h('input', { type: 'text', id: 'genome-input', class: 'mono', style: 'width:100%;padding:8px 10px;border-radius:6px;border:1px solid var(--line);background:var(--tray)', spellcheck: 'false', autocomplete: 'off', 'aria-label': 'Génome', oninput: e => { genome = e.target.value.toLowerCase().replace(/[^urdl]/g, '').slice(0, 30); scrub = Math.min(scrub, genome.length); drawDec(); } });
+  const gScrub = h('input', { type: 'range', min: 0, max: genome.length, value: 0, 'aria-label': 'Gène joué', oninput: e => { scrub = Number(e.target.value); drawDec(); } });
+  const gStrip = h('div'), gSum = h('p', { class: 'statusline', 'aria-live': 'polite' }), gTable = h('div', { class: 'tablewrap' }), gChart = h('div');
+  const rnd = n => Math.floor(Math.random() * n);
+  const mutBtns = [['change', 'Changer un coup'], ['insert', 'Insérer'], ['delete', 'Supprimer'], ['redo', 'Refaire 2 à 8']].map(([k, l]) => h('button', { class: 'btn', onclick: () => applyMutation(k) }, l));
+  dec.box.append(h('label', { class: 'field', for: 'genome-input' }, 'Génome, à modifier librement (u r d l)'), gIn,
+    h('div', { class: 'ctrl' }, h('span', { class: 'small muted' }, 'Mutation :'), mutBtns, h('button', { class: 'btn', onclick: () => { genome = Array.from({ length: 15 }, () => LET[rnd(4)]).join(''); scrub = 0; drawDec(); } }, 'Au hasard'), h('button', { class: 'btn', onclick: () => { genome = EXAMPLE; scrub = 0; drawDec(); } }, 'Exemple')),
+    h('label', { class: 'field' }, 'Gènes joués', gScrub), gStrip, gSum, gChart, gTable);
+  function drawDec(setInput = true) {
+    if (setInput) gIn.value = genome;
+    gScrub.max = genome.length; gScrub.value = scrub;
+    const r = evalLetters(START, 0, genome), k = Math.min(scrub, genome.length);
+    gStrip.innerHTML = `<div class="seq" aria-hidden="true">${[...genome].map((l, i) => `<span class="${i < r.used ? 'used' : 'tail'}${i < k ? '' : ''}${r.rows[i].state === 'ignoré' ? ' ign' : ''}" style="${i === k - 1 ? 'outline:3px solid var(--ink)' : ''}${r.rows[i].state === 'ignoré' ? ';text-decoration:line-through' : ''}">${l}</span>`).join('')}</div>`;
+    gSum.innerHTML = r.won ? `Victoire en ${r.moves} coups : la valeur du génome est ${r.moves}, meilleure que celle de n'importe quelle position non gagnée.`
+      : r.used === 0 ? `Départ : coût ${r.start}. Aucun coup ne descend sous ce coût : le préfixe utile est vide, ce génome ne vaut rien.`
+      : `Départ : coût <strong>${r.start}</strong>. Meilleur coût atteint : <strong>${r.best}</strong>, après ${r.used} gènes (les gènes foncés). Le reste est la queue : elle ne compte pas, et mute librement.`;
+    const pts = [[0, r.start]]; r.rows.forEach(x => { if (x.cost != null) pts.push([x.i + 1, x.cost]); });
+    const ys = pts.map(p => p[1]);
+    gChart.replaceChildren(chartBox('Coût après chaque gène joué', `départ ${r.start}`, lineChart(pts, { xmax: Math.max(1, genome.length), ymin: Math.min(...ys) - 3, ymax: Math.max(...ys) + 3, mark: pts.some(p => p[0] === k) ? k : null, label: 'Coût de la position après chaque gène joué', hgt: 80 })));
+    gTable.replaceChildren(h('table', {}, h('thead', {}, h('tr', {}, h('th', { class: 'num' }, '#'), h('th', {}, 'coup'), h('th', {}, 'résultat'), h('th', { class: 'num' }, 'tuiles'), h('th', { class: 'num' }, 'prox.'), h('th', { class: 'num' }, 'coût'))),
+      h('tbody', {}, r.rows.map(x => h('tr', { class: (x.better ? 'best ' : '') + (x.state === 'ignoré' || x.state === 'après la victoire' ? 'ignored ' : '') + (x.i === k - 1 ? 'best' : '') },
+        h('td', { class: 'num' }, x.i + 1), h('td', { class: 'mono' }, x.l), h('td', { class: x.state === 'victoire' ? 'win' : '' }, x.state === 'joué' ? (x.better ? 'meilleur' : 'joué') : x.state === 'après la victoire' ? 'après gain' : x.state),
+        h('td', { class: 'num' }, x.tiles ?? ''), h('td', { class: 'num' }, x.near ?? ''), h('td', { class: 'num' }, x.cost ?? (x.moves ?? '')))))));
+    view.show(r.states[k], { chip: 'Génétique', step: `génome · gène ${k} sur ${genome.length}`, moves: r.movesAt[k], letters: r.accepted.slice(0, r.movesAt[k]) , note: k ? `Gène ${k} : ${genome[k - 1]}, ${r.rows[k - 1].state}.` : 'Aucun gène joué.' });
+    return r;
+  }
+  function applyMutation(kind) {
+    const r = evalLetters(START, 0, genome), g = genome.split(''), len = g.length;
+    if (!len) return;
+    const pos = Math.random() < 0.5 ? rnd(Math.max(1, r.used)) : Math.min(len - 1, r.used + rnd(len - r.used));
+    if (kind === 'change') g[pos] = LET[(LET.indexOf(g[pos]) + 1 + rnd(3)) & 3];
+    else if (kind === 'insert') { g.splice(pos, 0, LET[rnd(4)]); g.pop(); }
+    else if (kind === 'delete') { g.splice(pos, 1); g.push(LET[rnd(4)]); }
+    else { const end = Math.min(len, pos + 2 + rnd(7)); for (let i = pos; i < end; i++) g[i] = LET[rnd(4)]; }
+    genome = g.join(''); drawDec();
+  }
+
+  // --- une population qui évolue ---
+  let mode = 'staged', seed = 3, run = null, gi = 0, sel = 0, k = 0, childVariant = 0, timer = null;
+  const OPTS = { staged: { population: 1000, length: 8, generations: 6, maxStages: 30 }, single: { population: 300, length: 30, maxStages: 1 } };
+  function doRun() {
+    const snaps = [], ga = createGA(CANVA, { ...OPTS[mode], seed, onGeneration: s => snaps.push(s) });
+    let st; for (let i = 0; i < 200; i++) { st = ga.step(); if (st.won) break; }
+    run = { snaps, won: st.won, moves: st.moves, solution: st.solution }; gi = 0; sel = 0; k = null;
+  }
+  const popBox = h('div', { class: 'panel' });
+  const modeBox = h('div', { class: 'chips', role: 'group', 'aria-label': 'Mode' });
+  const genSlider = h('input', { type: 'range', min: 0, max: 1, value: 0, 'aria-label': 'Génération', oninput: e => setGen(Number(e.target.value)) });
+  const playBtn = h('button', { class: 'btn primary', onclick: () => togglePlay() }, '▶ Lire');
+  const popStatus = h('p', { class: 'statusline', 'aria-live': 'polite' }), popChart = h('div'), topBox = h('div', { class: 'tablewrap' }), scrubBox = h('div'), childBox = h('div'), poolBox = h('div');
+  const drawMode = () => modeBox.replaceChildren(
+    h('button', { class: 'btn', 'aria-pressed': mode === 'staged', onclick: () => { mode = 'staged'; newRun(); } }, `Par étapes (${OPTS.staged.length} gènes, ${OPTS.staged.generations} générations)`),
+    h('button', { class: 'btn', 'aria-pressed': mode === 'single', onclick: () => { mode = 'single'; newRun(); } }, 'Une seule étape (30 gènes)'),
+    h('button', { class: 'btn', onclick: () => { seed = 1 + Math.floor(Math.random() * 98); newRun(); } }, 'Autre graine'));
+  popBox.append(modeBox, h('div', { class: 'ctrl' }, h('button', { class: 'btn', 'aria-label': 'Génération précédente', onclick: () => setGen(gi - 1) }, '◀'), playBtn, h('button', { class: 'btn', 'aria-label': 'Génération suivante', onclick: () => setGen(gi + 1) }, '▶')), genSlider, popStatus, popChart, topBox, scrubBox, h('h3', {}, 'Exemple de reproduction à cette génération'), childBox, h('h3', {}, 'Positions de départ de l\'étape'), poolBox);
+  function stop() { if (timer) { clearInterval(timer); timer = null; playBtn.textContent = '▶ Lire'; } }
+  function togglePlay() { if (timer) return stop(); if (gi >= run.snaps.length - 1) gi = 0; playBtn.textContent = '⏸ Pause'; timer = setInterval(() => { if (gi >= run.snaps.length - 1) return stop(); setGen(gi + 1, true); }, 450); }
+  function newRun() { stop(); doRun(); drawMode(); drawPop(); }
+  function setGen(n, keep) { if (!keep) stop(); gi = Math.max(0, Math.min(run.snaps.length - 1, n)); sel = 0; k = null; drawPop(); }
+  const traceOf = (snap, i) => { const t = snap.top[i], p = snap.pool[t.start]; return { t, p, ...evalLetters(p.state, p.moves.length, t.genome.slice(0, t.used)) }; };
+  function drawPop() {
+    const snap = run.snaps[gi], G = run.snaps.length; genSlider.max = G - 1; genSlider.value = gi;
+    const top = snap.top[0], single = mode === 'single';
+    popStatus.innerHTML = `Génération <strong>${snap.generation}</strong> sur ${G - 1}${single ? '' : ` · étape <strong>${snap.stage}</strong>, génération ${snap.stageGeneration} de l'étape`}. Population de ${OPTS[mode].population} génomes de ${OPTS[mode].length} gènes. ${top.won ? `<strong>Le meilleur génome gagne en ${top.moves + snap.pool[top.start].moves.length} coups.</strong>` : `Le meilleur laisse ${top.tiles} tuiles${top.used ? '' : ' (aucun progrès)'}.`}`;
+    const pts = run.snaps.map(s => [s.generation, s.top[0].won ? 0 : s.top[0].tiles]);
+    popChart.replaceChildren(chartBox('Tuiles restantes, meilleur génome', run.won ? `victoire à la génération ${G - 1}` : `${top.tiles}`, lineChart(pts, { xmax: Math.max(1, G - 1), ymin: 0, ymax: 16, mark: snap.generation, label: 'Tuiles restantes du meilleur génome par génération' })));
+    topBox.replaceChildren(h('table', {}, h('thead', {}, h('tr', {}, h('th', { class: 'num' }, 'rang'), h('th', {}, 'génome (foncé : préfixe utile)'), h('th', { class: 'num' }, 'tuiles'), h('th', { class: 'num' }, 'prox.'), ...(single ? [] : [h('th', { class: 'num' }, 'départ')]))),
+      h('tbody', {}, snap.top.map((t, i) => h('tr', { class: i === sel ? 'best' : '', style: 'cursor:pointer', onclick: () => { sel = i; k = null; drawPop(); } },
+        h('td', { class: 'num' }, i + 1), h('td', { html: seqHtml(t.genome, t.used) }), h('td', { class: 'num' }, t.won ? 'gagné' : t.tiles), h('td', { class: 'num' }, t.won ? '·' : t.near), ...(single ? [] : [h('td', { class: 'num' }, 'n°' + t.start)]))))));
+    const tr = traceOf(snap, sel), kk = k == null ? tr.states.length - 1 : Math.min(k, tr.states.length - 1);
+    scrubBox.replaceChildren(h('label', { class: 'field' }, `Jouer le génome n°${sel + 1} : ${kk} ${kk > 1 ? 'gènes' : 'gène'} sur ${tr.states.length - 1}`, h('input', { type: 'range', min: 0, max: tr.states.length - 1, value: kk, 'aria-label': 'Gènes joués', oninput: e => { k = Number(e.target.value); drawBoardOnly(); drawScrubLabel(); } })));
+    drawBoardOnly(tr, kk);
+    drawChild(snap);
+    drawPool(snap);
+  }
+  function drawScrubLabel() { const snap = run.snaps[gi], tr = traceOf(snap, sel), kk = Math.min(k, tr.states.length - 1); scrubBox.querySelector('label').firstChild.textContent = `Jouer le génome n°${sel + 1} : ${kk} ${kk > 1 ? 'gènes' : 'gène'} sur ${tr.states.length - 1}`; }
+  function drawBoardOnly(trIn, kkIn) {
+    const snap = run.snaps[gi], tr = trIn || traceOf(snap, sel), kk = kkIn ?? (k == null ? tr.states.length - 1 : Math.min(k, tr.states.length - 1));
+    const baseLetters = tr.p.moves;
+    view.show(tr.states[kk], { chip: 'Génétique', step: `génération ${snap.generation} · génome n°${sel + 1}`, moves: tr.movesAt[kk], letters: baseLetters + tr.accepted.slice(0, tr.movesAt[kk] - baseLetters.length),
+      note: `Ce génome est joué depuis ${snap.pool.length === 1 && snap.pool[0].moves.length === 0 ? 'le départ' : 'la position n°' + snap.top[sel].start + ' de l\'étape'}.` });
+  }
+  function drawChild(snap) {
+    const rand = mulberry32(seed * 1000 + snap.generation * 7 + childVariant);
+    const A = snap.top[0], Bc = snap.top.slice(1).find(t => t.start === A.start);
+    if (!Bc) { childBox.innerHTML = '<p>Pas de croisement possible ici : les meilleurs génomes ne partent pas de la même position.</p>'; return; }
+    const len = A.genome.length, cut = Math.floor(rand() * Math.max(1, A.used));
+    const crossed = A.genome.slice(0, cut) + Bc.genome.slice(cut), g = crossed.split('');
+    const kind = rand(), pos = rand() < 0.5 ? Math.floor(rand() * Math.max(1, A.used)) : Math.min(len - 1, A.used + Math.floor(rand() * (len - A.used)));
+    const chg = new Set(); let what;
+    if (kind < 0.45) { g[pos] = LET[(LET.indexOf(g[pos]) + 1 + Math.floor(rand() * 3)) & 3]; chg.add(pos); what = `changer le gène ${pos + 1}`; }
+    else if (kind < 0.7) { g.splice(pos, 0, LET[Math.floor(rand() * 4)]); g.pop(); chg.add(pos); what = `insérer un gène en position ${pos + 1} (la queue glisse, le dernier tombe)`; }
+    else if (kind < 0.9) { g.splice(pos, 1); g.push(LET[Math.floor(rand() * 4)]); chg.add(len - 1); what = `supprimer le gène ${pos + 1} (la queue glisse, un gène aléatoire entre à la fin)`; }
+    else { const end = Math.min(len, pos + 2 + Math.floor(rand() * 7)); for (let i = pos; i < end; i++) { g[i] = LET[Math.floor(rand() * 4)]; chg.add(i); } what = `refaire les gènes ${pos + 1} à ${end}`; }
+    const child = g.join(''), base = snap.pool[A.start], ev = evalLetters(base.state, base.moves.length, child);
+    childBox.replaceChildren(h('div', { style: 'display:flex;flex-direction:column;gap:6px', html:
+      `<p class="small muted">Parent A (le meilleur), parent B (le suivant qui part de la même position), coupure après le gène ${cut}, puis une mutation.</p>
+       <div><span class="small muted">A</span> ${seqHtml(A.genome, A.used, { cut })}</div><div><span class="small muted">B</span> ${seqHtml(Bc.genome, Bc.used, { cut })}</div>
+       <div><span class="small muted">A[0..${cut}] + B[${cut}..]</span> ${seqHtml(crossed, Math.min(A.used, cut), { cut })}</div>
+       <div><span class="small muted">mutation : ${what}</span> ${seqHtml(child, ev.used, { chg })}</div>
+       <p class="statusline">Enfant : ${ev.won ? `<strong>gagne en ${ev.moves} coups</strong>` : ev.used ? `meilleur coût <strong>${ev.best}</strong> après ${ev.used} gènes` : 'aucun progrès'}. Le parent A était à ${A.won ? 'une victoire' : `${A.tiles} tuiles, proximité ${A.near}`}. Un enfant n'est conservé que si, une fois classé avec les autres, il se place parmi les meilleurs.</p>` }),
+      h('div', { class: 'ctrl' }, h('button', { class: 'btn', onclick: () => { childVariant++; drawChild(run.snaps[gi]); } }, 'Autre enfant'),
+        h('button', { class: 'btn', onclick: () => { stop(); view.show(ev.states[Math.max(ev.used, 0)], { chip: 'Génétique', step: 'l\'enfant, joué', moves: ev.movesAt[Math.max(ev.used, 0)], letters: base.moves + ev.accepted.slice(0, ev.movesAt[Math.max(ev.used, 0)] - base.moves.length) }); } }, 'Voir l\'enfant sur la grille')));
+  }
+  function drawPool(snap) {
+    if (mode === 'single') { poolBox.innerHTML = '<p class="small muted">Une seule étape : tous les génomes partent de la grille de départ.</p>'; return; }
+    const show = snap.pool.slice(0, 18);
+    poolBox.replaceChildren(h('p', { class: 'small muted', style: 'margin-bottom:6px' }, `${plural(snap.pool.length, 'position', 'positions')} de départ à cette génération (étape ${snap.stage}). À l'étape 0 il n'y a que le départ ; ensuite, ce sont les meilleures positions atteintes à la fin de l'étape précédente, et les génomes sont répartis entre elles.`),
+      h('div', { class: 'minis' }, show.map((p, i) => miniButton(p.state, { top: `n°${i}`, bottom: `${p.moves.length} coups · coût ${p.cost}`, pressed: false, label: `Position de départ n°${i}`, onclick: () => { stop(); view.show(p.state, { chip: 'Génétique', step: `départ n°${i} de l'étape ${snap.stage}`, moves: p.moves.length, letters: p.moves }); } }))));
+  }
+  mount.append(dec.box, popBox);
+  doRun(); drawMode(); drawDec(); drawPop();
+  // Étapes guidées
+  const showDec = (on) => { dec.box.hidden = !on; popBox.hidden = on; };
+  const rDec = () => evalLetters(START, 0, EXAMPLE);
+  const steps = [
+    { title: 'Un génome', body: () => `<p>Un génome est une liste de coups : ici ${EXAMPLE.length} lettres (<code>u r d l</code> : haut, droite, bas, gauche). Le jeu <strong>ignore un coup impossible</strong> : le premier, <code>l</code>, essaie d'aller à gauche depuis le bord gauche, et il est barré. Tout génome est donc valide, il n'y a rien à réparer.</p><p>Faites glisser le curseur « Gènes joués » : la grille joue le génome gène par gène. Vous pouvez aussi modifier le génome ou appliquer une mutation.</p>`,
+      show: () => { showDec(true); scrub = 0; drawDec(); } },
+    { title: 'Sa valeur : le préfixe utile', body: () => { const r = rDec(); return `<p>À chaque coup accepté, on calcule le coût de la section précédente. La valeur du génome est <strong>le meilleur coût rencontré en chemin</strong> : ici ${r.best}, atteint après ${r.used} gènes, contre ${r.start} au départ. Les gènes foncés sont ce « préfixe utile ».</p><p>La suite, la queue, ne compte pas : le coût remonte (chaque coup coûte ${WMOVE}) et le génome ne gagne rien à y jouer. C'est une zone libre où les mutations peuvent explorer sans rien casser. Un génome qui gagne vaut son nombre de coups, ce qui est toujours meilleur qu'une position non gagnée.</p>`; },
+      show: () => { showDec(true); scrub = rDec().used + 1; drawDec(); } },
+    { title: 'Une population au hasard', body: () => `<p>La génération 0 est faite de ${OPTS[mode].population} génomes tirés au hasard. On les classe par valeur : le tableau montre les huit meilleurs, avec leur préfixe utile en foncé. Cliquez une ligne pour jouer ce génome sur la grille.</p><p>La plupart des génomes aléatoires ne valent rien (préfixe vide). C'est pourquoi la population est grande, et pourquoi la sélection compte.</p>`,
+      show: () => { showDec(false); stop(); gi = 0; sel = 0; k = null; drawPop(); } },
+    { title: 'Reproduction : sélection, croisement, mutation', body: () => `<p>Une nouvelle génération se fabrique ainsi : les 2 % meilleurs passent tels quels (élite) ; les autres sont des enfants. Un parent est le meilleur de 3 génomes tirés au hasard. Une fois sur deux, le début d'un parent est recollé à la fin d'un autre, à condition qu'ils partent de la même position. Puis de 1 à 4 mutations : changer un coup (45 %), insérer (25 %), supprimer (20 %) ou refaire 2 à 8 gènes (10 %). La moitié des mutations tombent dans le préfixe utile, l'autre moitié dans la queue.</p><p>Le bloc « exemple de reproduction » rejoue cela avec les deux meilleurs génomes de la génération affichée. « Autre enfant » en tire un autre.</p>`,
+      show: () => { showDec(false); stop(); gi = Math.min(2, run.snaps.length - 1); sel = 0; k = null; drawPop(); } },
+    { title: 'Les générations', body: () => `<p>Faites avancer les générations. Le meilleur génome s'améliore : ses tuiles restantes baissent à mesure qu'il atteint des lignes. ${run.won ? `Avec la graine ${seed}, une victoire apparaît à la génération ${run.snaps.length - 1}, en ${run.moves} coups` + (run.moves === OPTIMUM ? ' : l\'optimum.' : ` (l'optimum est ${OPTIMUM}).`) : 'Sur cette graine, aucune victoire dans les générations calculées.'}</p><p>Le solveur complet ne s'arrête pas à la première victoire : il relance une passe qui doit faire plus court. « Autre graine » donne une autre histoire.</p>`,
+      show: () => { showDec(false); stop(); gi = run.snaps.length - 1; sel = 0; k = null; drawPop(); } },
+    { title: 'Par étapes', body: () => `<p>Un seul génome long est trop difficile sur de grandes grilles. Le mode par étapes cherche ${OPTS.staged.length} coups à la fois. Pendant ${OPTS.staged.generations} générations, les génomes partent de la grille. Ensuite on garde les meilleures positions <strong>distinctes</strong> atteintes (jusqu'à 100), et l'étape suivante répartit la population entre elles : chaque génome part de l'une de ces positions.</p><p>Les positions de départ de la génération affichée sont montrées dessous. Avancez les générations en mode « Par étapes » : à la génération ${OPTS.staged.generations + 1}, l'étape 1 démarre depuis les positions gardées.</p>`,
+      show: () => { showDec(false); stop(); if (mode !== 'staged') { mode = 'staged'; newRun(); } gi = run.snaps.length - 1; sel = 0; k = null; drawPop(); } },
+  ];
+  const holder = h('div'); mount.prepend(holder);
+  const st = stepper(holder, steps); st.go(0);
+  register('genetique', () => (dec.box.hidden ? drawBoardOnly() : drawDec()));
+}
+
+/* ---------- Gènes de poussée ---------- */
+function initPush(mount) {
+  const P = ringSize(FR.states[0]);
+  const base = () => { const s = cloneState(FR.states[0]); const [x, y] = ringCell(s, 3); s.x = x; s.y = y; return s; }; // curseur sur la case 3
+  let gene = 160, cursor = 3;
+  const decode = (s, g) => { const cur = ringIndex(s, s.x, s.y), off = Math.round((g - 128) / 128 * (P / 2)), raw = ((cur + off) % P + P) % P, corner = [0, 5, 10, 15].includes(raw), slot = ringSlot(s, cur + off + P); return { cur, off, raw, corner, slot, target: slotRing(s, slot), walk: walkDistance(s, slot) }; };
+  // 1. lire un gène
+  const readBox = h('div', { class: 'panel' }), readText = h('p', { class: 'statusline', 'aria-live': 'polite' });
+  const gSlider = h('input', { type: 'range', min: 0, max: 255, value: gene, 'aria-label': 'Gène', oninput: e => { gene = Number(e.target.value); drawRead(); } });
+  const presets = h('div', { class: 'chips', role: 'group', 'aria-label': 'Gènes d\'exemple' });
+  readBox.append(h('label', { class: 'field' }, h('span', {}, 'Gène : ', h('b', { id: 'gene-val' }, gene)), gSlider), presets, readText);
+  function drawRead() {
+    const s = base(); s.x = ringCell(s, cursor)[0]; s.y = ringCell(s, cursor)[1];
+    const d = decode(s, gene), path = [], P2 = ringSize(s), f = (d.target - d.cur + P2) % P2, cw = f <= P2 - f;
+    for (let n = cw ? f : P2 - f, i = d.cur; n >= 0; n--) { path.push(i); i = (i + (cw ? 1 : P2 - 1)) % P2; }
+    $('#gene-val').textContent = gene; gSlider.value = gene;
+    presets.replaceChildren(...[128, 140, 116, 96, 160, 200].map(p => h('button', { class: 'btn', 'aria-pressed': p === gene, onclick: () => { gene = p; drawRead(); } }, String(p))));
+    readText.innerHTML = `Anneau de ${P} cases, curseur sur la case ${d.cur}. Décalage = arrondi((${gene} − 128) / 128 × ${P} / 2) = <strong>${d.off > 0 ? '+' : ''}${d.off}</strong>. On tombe sur la case d'anneau ${d.raw}${d.corner ? ', un coin : on prend la case suivante' : ''}, c'est la case de poussée ${d.slot} (poussée ${DIR_NAME[slotDirection(s, d.slot)]}). Marche ${d.walk}, coût <strong>${d.walk + 1}</strong>.`;
+    view.show(s, { chip: 'Gènes de poussée', step: `gène ${gene} : décalage ${d.off > 0 ? '+' : ''}${d.off}`, moves: 0, letters: '', numbers: true, path, target: d.target, onSlot: slot => { cursor = slotRing(s, slot); drawRead(); }, note: 'Cliquez une case de l\'anneau pour y poser le curseur.' });
+  }
+  // 2. jouer huit gènes
+  const G8 = [140, 116, 160, 96, 130, 170, 120, 150];
+  let n8 = 0, played = null, snapPlay = null; const playBox = h('div', { class: 'panel' }), playTable = h('div', { class: 'tablewrap' }), playMsg = h('p', { class: 'statusline', 'aria-live': 'polite' });
+  const nextBtn = h('button', { class: 'btn primary', onclick: () => nextGene() }, 'Gène suivant');
+  playBox.append(h('div', { class: 'seq', 'aria-label': 'Les huit gènes' }, G8.map((g, i) => h('span', { id: 'g8-' + i }, g))), h('div', { class: 'ctrl' }, nextBtn, h('button', { class: 'btn', onclick: () => resetPlay() }, 'Recommencer')), playMsg, playTable);
+  const rows8 = [];
+  function paintGenes() { G8.forEach((g, i) => { const e = document.getElementById('g8-' + i); if (e) e.className = i < n8 ? 'used' : ''; }); }
+  function resetPlay() { n8 = 0; rows8.length = 0; played = true; snapPlay = { state: cloneState(FR.states[0]), moves: 0, letters: '' }; showPlay('départ, aucun gène joué'); drawPlay(); }
+  function showPlay(step) { view.show(snapPlay.state, { chip: 'Gènes de poussée', step, moves: snapPlay.moves, letters: snapPlay.letters, numbers: true }); }
+  async function nextGene() {
+    if (view.busy || n8 >= G8.length || isWon(snapPlay.state)) return;
+    nextBtn.disabled = true;
+    await view.holdWhile(async () => {
+      const s = cloneState(snapPlay.state), d = decode(s, G8[n8]);
+      view.show(s, { chip: 'Gènes de poussée', step: `gène ${n8 + 1} : ${G8[n8]}`, moves: snapPlay.moves, letters: snapPlay.letters, numbers: true, target: d.target, path: [d.cur, d.target] });
+      await wait(600);
+      await view.playAction(d.slot);
+      const t = view.s;
+      rows8.push({ i: n8 + 1, gene: G8[n8], off: d.off, slot: d.slot, walk: d.walk, tiles: t.rows * t.cols, near: isWon(t) ? 0 : nearness(t), moves: view.moves });
+      n8++; snapPlay = { state: cloneState(t), moves: view.moves, letters: view.letters }; showPlay(`après le gène ${n8}`); drawPlay();
+    });
+  }
+  function drawPlay() {
+    paintGenes();
+    const sp = snapPlay.state;
+    playMsg.innerHTML = n8 === 0 ? 'Chaque gène est lu depuis la position où se trouve le curseur à ce moment-là.' : `${plural(n8, 'gène joué', 'gènes joués')} : <strong>${snapPlay.moves}</strong> coups, ${sp.rows * sp.cols} tuiles${isWon(sp) ? ', gagné' : ''}. Huit gènes ne suffisent pas à gagner ici : le génétique en tire d'autres et garde les meilleurs.`;
+    playTable.replaceChildren(h('table', {}, h('thead', {}, h('tr', {}, ['#', 'gène', 'décalage', 'case', 'marche', 'tuiles', 'prox.', 'coups'].map((t, i) => h('th', { class: i ? 'num' : '' }, t)))),
+      h('tbody', {}, rows8.map(r => h('tr', {}, [r.i, r.gene, (r.off > 0 ? '+' : '') + r.off, r.slot, r.walk, r.tiles, r.near, r.moves].map((v, i) => h('td', { class: i ? 'num' : '' }, v)))))));
+    nextBtn.disabled = n8 >= G8.length || isWon(sp);
+  }
+  // 3. tirer un gène
+  const histoBox = h('div', { class: 'panel' });
+  function drawHisto() {
+    const rand = mulberry32(42), counts = {}; let total = 0;
+    for (let i = 0; i < 5000; i++) { const g = 128 + Math.round((rand() + rand() - 1) * 127), off = Math.round((g - 128) / 128 * (P / 2)); counts[off] = (counts[off] || 0) + 1; total++; }
+    const offs = []; for (let o = -P / 2; o <= P / 2; o++) offs.push(o);
+    const max = Math.max(...offs.map(o => counts[o] || 0));
+    const near = offs.filter(o => Math.abs(o) <= 2).reduce((a, o) => a + (counts[o] || 0), 0);
+    histoBox.replaceChildren(h('div', { class: 'histo', role: 'img', 'aria-label': 'Répartition des décalages sur 5000 gènes tirés' }, offs.map(o => h('div', { style: `height:${((counts[o] || 0) / max) * 100}%`, title: `${o} : ${counts[o] || 0}` }))),
+      h('div', { class: 'histolab', 'aria-hidden': 'true' }, offs.map(o => h('span', {}, o))),
+      h('p', { class: 'small muted' }, `Décalage (en cases d'anneau) de 5 000 gènes tirés. ${Math.round(near / total * 100)} % tombent à 2 cases ou moins du curseur : le tirage est un triangle, 128 + arrondi((r₁ + r₂ − 1) × 127), donc des marches courtes sont favorisées.`));
+  }
+  mount.append(readBox, playBox, histoBox); drawHisto();
+  const showPanels = n => { readBox.hidden = n !== 0; playBox.hidden = n !== 1; histoBox.hidden = n !== 2; };
+  const steps = [
+    { title: 'Lire un gène', body: () => `<p>Un gène est un octet. On le lit comme une <strong>distance signée sur l'anneau</strong> depuis la position du curseur : 128 veut dire « ici », les valeurs plus petites vont vers l'arrière, les plus grandes vers l'avant. La marche vers la case choisie est toujours le plus court chemin.</p><p>Faites glisser le gène : la grille montre le curseur, la case visée et le chemin de marche. Cliquez une case de l'anneau pour déplacer le curseur.</p>`,
+      show: () => { showPanels(0); drawRead(); } },
+    { title: 'Jouer huit gènes', body: () => `<p>Un génome de poussée est une liste de gènes. Chacun est lu depuis la position où le curseur se trouve à ce moment-là, puis la poussée est jouée avec sa marche. Appuyez sur « Gène suivant » : la grille montre la case visée, puis joue la marche et la poussée.</p>`,
+      show: () => { showPanels(1); if (!played) resetPlay(); else { showPlay(n8 ? `après le gène ${n8}` : 'départ, aucun gène joué'); drawPlay(); } } },
+    { title: 'Tirer un gène', body: () => `<p>Un gène tiré au hasard est ${'128 + arrondi((r₁ + r₂ − 1) × 127)'} : la somme de deux nombres au hasard donne une forme en triangle autour de 128. Les petites distances sont donc les plus probables, ce qui donne des génomes dont la marche coûte peu.</p><p>Un numéro de case absolu donnait de mauvais résultats : il n'a plus de sens quand la grille rétrécit. Le décalage relatif au curseur garde son sens, et avec des étapes courtes (6 à 10 poussées) le résultat rejoint celui du génétique classique sans le dépasser.</p>`,
+      show: () => { showPanels(2); view.show(base(), { chip: 'Gènes de poussée', step: 'curseur sur la case 3', moves: 0, numbers: true }); } },
+  ];
+  const holder = h('div'); mount.prepend(holder);
+  const st = stepper(holder, steps); st.go(0);
+  register('poussees', () => st.refresh());
+}
+const $ = (sel, root = document) => root.querySelector(sel);
+
+/* ---------- Comparer ---------- */
+function initCompare(mount) {
+  const engines = ['ga-single', 'ga-staged', 'ga-push', 'beam'], names = { 'ga-single': 'Génétique, une étape', 'ga-staged': 'Génétique, par étapes', 'ga-push': 'Gènes de poussée', beam: 'Faisceau' };
+  const N = null;
+  const data = [
+    ['4×4', 'a', 10, [10, 10, 10, 10]], ['4×4', 'b', 13, [13, 13, 13, 13]], ['5×5', 'a', 18, [18, 18, 18, 18]], ['5×5', 'b', 18, [19, 18, 18, 18]],
+    ['6×6', 'a', N, [42, 38, 37, 32]], ['6×6', 'b', N, [27, 29, 31, 27]], ['6×6', 'c', N, [40, 34, 37, 37]],
+    ['8×8', 'a', N, [N, 96, 105, 78]], ['8×8', 'b', N, [N, 95, 90, 78]], ['8×8', 'c', N, [N, 59, 77, 66]], ['8×8', 'd', N, [N, 81, 68, 61]],
+    ['10×10', 'a', N, [N, N, N, 217]], ['10×10', 'b', N, [N, N, N, 147]],
+  ];
+  const sizes = ['Toutes', '4×4', '5×5', '6×6', '8×8', '10×10'];
+  const advice = {
+    'Toutes': 'Le faisceau est le meilleur choix par défaut dès 6×6. En dessous, l\'exact donne l\'optimum.',
+    '4×4': 'Utilisez l\'exact : l\'optimum en quelques millisecondes (445 positions pour la grille d\'exemple). Les autres moteurs trouvent l\'optimum aussi, mais sans preuve.',
+    '5×5': 'Utilisez l\'exact : environ 4 secondes pour prouver l\'optimum. Les moteurs approchés en sont à 0 ou 1 coup.',
+    '6×6': 'Le faisceau gagne sur deux grilles et fait égalité sur une, avec une première solution en moins d\'une seconde. Le génétique par étapes est à quelques coups.',
+    '8×8': 'Le faisceau est meilleur en moyenne (70,8 contre 82,8 pour le génétique par étapes) mais le génétique gagne la grille c (59 contre 66). Le génétique en une étape ne gagne pas en 10 secondes.',
+    '10×10': 'Seul le faisceau gagne en 10 secondes. Ses 147 à 217 coups sont sûrement loin de l\'optimum : la proximité est trop grossière à cette taille.',
+  };
+  let sel = 'Toutes';
+  const out = h('div', { style: 'display:flex;flex-direction:column;gap:12px' });
+  mount.append(out);
+  function draw() {
+    const rows = data.filter(r => sel === 'Toutes' || r[0] === sel);
+    const avg = i => { const v = rows.map(r => r[3][i]); return v.some(x => x === N) ? null : v.reduce((a, b) => a + b, 0) / v.length; };
+    out.replaceChildren(
+      h('div', { class: 'chips', role: 'group', 'aria-label': 'Taille' }, sizes.map(z => h('button', { class: 'btn', 'aria-pressed': z === sel, onclick: () => { sel = z; draw(); } }, z))),
+      h('div', { class: 'tablewrap' }, h('table', {},
+        h('thead', {}, h('tr', {}, h('th', {}, 'grille'), h('th', { class: 'num' }, 'optimum'), engines.map(e => h('th', { class: 'num' }, names[e])))),
+        h('tbody', {}, rows.map(r => { const best = Math.min(...r[3].filter(x => x !== N)); return h('tr', {}, h('td', {}, r[0] + ' ' + r[1]), h('td', { class: 'num' }, r[2] ?? '?'), r[3].map(v => h('td', { class: 'num' + (v === best ? ' win' : '') }, v === N ? 'aucune' : v))); }),
+          sel !== 'Toutes' ? h('tr', {}, h('td', { class: 'win' }, 'moyenne'), h('td', {}), engines.map((e, i) => { const a = avg(i); return h('td', { class: 'num win' }, a === null ? 'n/a' : a.toFixed(1)); })) : null))),
+      h('p', {}, advice[sel]),
+      h('p', { class: 'small muted' }, 'En gras : la meilleure solution de la ligne. « aucune » : pas de victoire en 10 secondes. Le point d\'interrogation : l\'optimum n\'est pas connu au-delà de 5×5.'));
+  }
+  draw();
+}
+
+/* ---------- Démarrage ---------- */
+view = new BoardView(document.getElementById('side'));
+initTerrain(document.getElementById('terrain-app'));
+initCost(document.getElementById('cout-app'));
+initExact(document.getElementById('exact-app'));
+initBeam(document.getElementById('beam-app'));
+initGA(document.getElementById('ga-app'));
+initPush(document.getElementById('push-app'));
+initCompare(document.getElementById('compare-app'));
+register('vue', () => view.show(createState(CANVA), { chip: 'Départ', step: 'grille 4x4:a', moves: 0 }));
+register('comparer', () => view.show(createState(CANVA), { chip: 'Départ', step: 'grille 4x4:a', moves: 0 }));
+view.show(createState(CANVA), { chip: 'Départ', step: 'grille 4x4:a', moves: 0 });
+watchSections();
+
+</script>
