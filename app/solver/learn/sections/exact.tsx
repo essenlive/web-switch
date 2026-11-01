@@ -6,7 +6,7 @@ import { slotLetters } from '@/lib/solver/ring'
 import { createState, isWon } from '@/lib/solver/simulate'
 import { CANVA, EXACT, OPTIMUM, SOL } from '../data'
 import { fmt, plural } from '../format'
-import { Lead, Panel, Section } from '../section'
+import { Lead, Panel, Section, TryIt } from '../section'
 import { MiniButton, MiniGrid } from '../mini-button'
 import { usePlayer, useStage } from '../stage'
 import { Stepper, useStepper, type Step } from '../stepper'
@@ -138,6 +138,7 @@ export function Exact() {
               onClick={() => { player.stop(); const n = pin === i ? -1 : i; setPin(n); present(idx, n) }} />)}
           </MiniGrid>
         </>}
+        <TryIt engine="exact" grid="4x4:b" label="Try the exact search on another grid" />
       </Panel>
     </Section>
   )

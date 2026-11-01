@@ -8,7 +8,7 @@ import { CANVA, OPTIMUM } from '../data'
 import { ChartBox, LineChart } from '../charts'
 import { plural } from '../format'
 import { Seq, playGenes } from '../genome'
-import { Lead, Panel, Section } from '../section'
+import { Lead, Panel, Section, TryIt } from '../section'
 import { MiniButton, MiniGrid } from '../mini-button'
 import { usePlayer, useStage } from '../stage'
 import { Stepper, useStepper, type Step } from '../stepper'
@@ -243,6 +243,7 @@ export function Genetic() {
                   onClick={() => { player.stop(); stage.show(p.state, { chip: 'Genetic', step: `start n°${i} of stage ${snap.stage}`, moves: p.moves.length, letters: p.moves }) }} />)}
               </MiniGrid></>}
           </div>)}
+        <TryIt engine="ga-staged" grid="6x6:a" label="Try the genetic search on a 6×6 grid" />
       </Panel>
     </Section>
   )

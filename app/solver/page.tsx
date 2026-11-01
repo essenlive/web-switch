@@ -2,6 +2,7 @@
 
 import { Suspense, useMemo, useState } from 'react'
 import dynamic from 'next/dynamic'
+import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Grid } from '@/components/grid'
 import { Records } from '@/components/records'
@@ -22,7 +23,8 @@ function SolverTool() {
   const router = useRouter()
   const [tab, setTab] = useState<'run' | 'benchmark'>('run')
   const [variants, setVariants] = useState(freshVariants)
-  const [runPick, setRunPick] = useState(['beam'])
+  // ?e=<engine id> opens the tool with that engine chosen (the explanation links here)
+  const [runPick, setRunPick] = useState(() => { const e = params.get('e'); return e && freshVariants().some(v => v.id === e) ? [e] : ['beam'] })
   const [benchPick, setBenchPick] = useState(['ga-staged', 'beam', 'exact'])
 
   const seed = params.get('s') || ''
@@ -44,9 +46,12 @@ function SolverTool() {
   return (
     <div className="grow flex flex-col gap-2">
       <div className="flex flex-col gap-2 p-4 bg-background rounded-lg">
-        <h2 className="text-sm font-bold text-muted-foreground">
-          Solver{grid && ` · grid ${new URLSearchParams(input.url).get('cs')}${seed ? ` · ${seed}` : ''}`}
-        </h2>
+        <div className="flex items-baseline justify-between gap-2">
+          <h2 className="text-sm font-bold text-muted-foreground">
+            Solver{grid && ` · grid ${new URLSearchParams(input.url).get('cs')}${seed ? ` · ${seed}` : ''}`}
+          </h2>
+          <Link href="/solver" className="shrink-0 text-sm font-bold underline underline-offset-4">How it works</Link>
+        </div>
         <label className="text-xs text-muted-foreground">Benchmark grid
           <select value={benchId ?? (hasGrid ? 'custom' : '')} onChange={e => { if (e.target.value && e.target.value !== 'custom') open(benchGrid(e.target.value).query) }} className={field}>
             <option value="" disabled>Pick a grid</option>

@@ -1,4 +1,4 @@
-import { Lead, Section } from '../section'
+import { Lead, Section, ShowStart } from '../section'
 
 const ENGINES = [
   { tag: 'Guarantee: the optimum', name: 'Exact', text: 'Explore everything, in order of the number of moves. The first win is the shortest.', size: '4×4 and 5×5 grids.' },
@@ -22,6 +22,7 @@ const Card = ({ tag, name, text, size }: { tag?: string; name: string; text: str
 export function Overview() {
   return (
     <Section id="overview" title="How to read this page">
+      <ShowStart id="overview" />
       <Lead>The example grid is <code>4x4:a</code>, a grid of the benchmark. Its shortest solution takes 10 moves, which lets us judge every method. Each section has guided steps (Previous and Next) and tools to explore freely. What you do moves the grid on the side: the position being developed, the positions the beam keeps, a genome played gene by gene. The label above the grid tells which method is driving it.</Lead>
       <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">{ENGINES.map(e => <Card key={e.name} {...e} />)}</div>
       <div className="grid grid-cols-[repeat(auto-fit,minmax(210px,1fr))] gap-2.5">{IDEAS.map(e => <Card key={e.name} {...e} />)}</div>

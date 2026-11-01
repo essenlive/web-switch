@@ -8,15 +8,20 @@ import { Beam } from './sections/beam'
 import { Cost } from './sections/cost'
 import { Exact } from './sections/exact'
 import { Genetic } from './sections/genetic'
+import { Compare } from './sections/compare'
 import { Overview } from './sections/overview'
+import { Push } from './sections/push'
+import { Try } from './sections/try'
 import { Terrain } from './sections/terrain'
 import { Stage, StageProvider } from './stage'
 
-const NAV = [['overview', 'Overview'], ['terrain', 'Terrain'], ['cost', 'Cost'], ['exact', 'Exact'], ['beam', 'Beam'], ['genetic', 'Genetic']]
+const NAV = [['overview', 'Overview'], ['terrain', 'Terrain'], ['cost', 'Cost'], ['exact', 'Exact'], ['beam', 'Beam'], ['genetic', 'Genetic'], ['push', 'Push genes'], ['compare', 'Compare'], ['try', 'Try it']]
 
 // /solver without parameters: how the solvers work, followed on one example grid kept next to the text
 export default function LearnPage() {
   const [stage] = useState(() => new Stage(createState(CANVA)))
+  // An anchor in the link (/solver#beam) leads to its section once the page is there
+  useEffect(() => { const id = window.location.hash.slice(1); if (id) document.getElementById(id)?.scrollIntoView() }, [])
   // The grid goes back to the section being read: the last one whose top has passed the middle of the screen, or the last one at the bottom of the page
   useEffect(() => {
     let active = '', frame = 0
@@ -53,6 +58,9 @@ export default function LearnPage() {
           <Exact />
           <Beam />
           <Genetic />
+          <Push />
+          <Compare />
+          <Try />
         </div>
       </div>
     </StageProvider>

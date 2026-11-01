@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { Copy, SlidersHorizontal, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ENGINE_PRESETS, FIELDS, type EngineSpec } from '@/lib/solver/engines'
@@ -67,6 +68,7 @@ export function Variants({ variants, setVariants, mode, picked, setPicked, locke
           </div>
           {open === v.id && (
             <div className="grid grid-cols-2 gap-2">
+              <p className="col-span-2 text-xs"><Link href={`/solver#${v.kind === 'beam' ? 'beam' : v.kind === 'exact' ? 'exact' : v.options.pushes ? 'push' : 'genetic'}`} className="font-bold underline underline-offset-4">How this engine works</Link></p>
               {FIELDS[v.kind].map(f => f.type === 'boolean' ? (
                 <label key={f.key} title={f.hint} className="col-span-2 flex items-center gap-2 text-xs text-muted-foreground">
                   <input type="checkbox" checked={v.options[f.key] === true} disabled={locked} className="accent-foreground size-4"

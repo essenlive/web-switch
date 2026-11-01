@@ -135,7 +135,7 @@ URL `?s=…&cs=WxH&t=true` (seed required). Clock starts at the first move attem
 
 A longer walkthrough of each method, with worked examples and diagrams, is in [SOLVER.md](SOLVER.md) (in French).
 
-`/solver?s=…&cs=WxH` (or `c=…`, the same params as a game, no `t`) searches for a short winning move list in the browser. Without params it opens on a picker of the benchmark grids. It is a tool, not a game mode: nothing links to it, the layout sets `robots: noindex`, and it never touches the local highscores. The best solution is opened in `/replay` through the usual link (`/replay{url}&i={moves}`). It can also publish its best solution to the leaderboard as `the-bot` (see "Publishing as the-bot" below).
+`/solver` has two modes. **With a grid** (`?s=…&cs=WxH`, or `c=…`, the same params as a game, no `t`; `&e=<engine id>` chooses the engine) it is the tool: it searches for a short winning move list in the browser. **Without params** it is the explanation of the solvers (see "The explanation page" below). It is a tool, not a game mode: nothing links to it, the layout sets `robots: noindex`, and it never touches the local highscores. The best solution is opened in `/replay` through the usual link (`/replay{url}&i={moves}`). It can also publish its best solution to the leaderboard as `the-bot` (see "Publishing as the-bot" below).
 
 | File | Role |
 |---|---|
@@ -150,11 +150,25 @@ A longer walkthrough of each method, with worked examples and diagrams, is in [S
 | [lib/solver/worker.ts](../lib/solver/worker.ts) | Web Worker: runs `step()` in 100 ms slices, posts the stats, keeps improving after a win until it receives `stop`. |
 | [lib/solver/engines.ts](../lib/solver/engines.ts) | The engines as data: `ENGINE_PRESETS`, the option fields of each kind (`FIELDS`: label, hint, default), and `createEngine(kind, canva, options)`, which the worker and the benchmark both use. |
 | [lib/solver/benchGrids.ts](../lib/solver/benchGrids.ts) | The 13 fixed benchmark grids (`4x4:a` … `10x10:b`, seed `bench-<name>`). |
-| [app/solver/page.tsx](../app/solver/page.tsx) | Grid picker (benchmark grids, or a seed and a size, or the link's params), the grid, then two tabs. |
+| [app/solver/page.tsx](../app/solver/page.tsx) | Chooses between the two modes. The tool: grid picker (benchmark grids, or a seed and a size, or the link's params), the grid, then two tabs. |
+| [lib/solver/trace.ts](../lib/solver/trace.ts) | The exact search, a beam round and a list of moves with every step kept (`exactTrace`, `beamTrace`, `framesOf`, `decompose`), for the explanation page. `trace.test.ts` checks them against `solveExact` and `createBeam`. `createGA` also takes an `onGeneration` hook (a snapshot of each generation, no change to the run). |
+| [app/solver/learn/](../app/solver/learn) | The explanation page (see below). |
 | [app/solver/run.tsx](../app/solver/run.tsx) | **Run** tab: one engine on the grid, with an optional time limit, stats, two charts, the solution, the replay link. Posts to the-bot (never on benchmark grids). |
 | [app/solver/benchmark.tsx](../app/solver/benchmark.tsx) | **Benchmark** tab: tick grids and engines, a time per search, run them one after the other; table of moves (best of the row underlined, first solution and when, replay link per cell, average per engine), "Copy report". |
 | [app/solver/variants.tsx](../app/solver/variants.tsx) | The list of engine variants: pick (one, or several for the benchmark), rename, edit every option, duplicate, remove, reset. |
 | [app/solver/useSolverWorker.ts](../app/solver/useSolverWorker.ts) | One worker, a start cancels the previous run and its late messages are ignored. |
+
+### The explanation page
+
+`/solver` without params follows the four methods step by step on **one example grid**, `4x4:a` (optimum 10 moves), which stays next to the text: a column on the right on a wide screen, a band at the top on a phone. It is loaded on demand (`next/dynamic`), and written in English like the rest of the app.
+
+- `stage.tsx`: `Stage` is the object behind the grid (what it shows, the animated plays, a lock while something plays). Sections call `show()`; `board.tsx` only draws what the stage says. `usePlayer` steps through an exploration.
+- `index.tsx`: the layout and the scroll rule: the grid goes back to the section being read (the last one whose top passed the middle of the screen, or the last one at the bottom).
+- `stepper.tsx`: the guided steps of a section (a step can animate the grid; going back jumps to its end).
+- `sections/`: `terrain` (the rules, the last step is playable), `cost` (line costs, nearness, a slider over the optimum), `exact` (position by position, the 16 children, the buckets), `beam` (layer by layer, kept positions, effect of the width), `genetic` (a genome played gene by gene, the population, reproduction, stages), `push` (reading a gene on the ring), `compare` and `try` (links to the tool on the benchmark grids, with `&e=` choosing the engine).
+- `data.ts`: the example grid, its optimum, and the traces computed once. Tile colors and shapes come from the game themes (`bg-tile-*`).
+
+The French walkthrough in [SOLVER.md](SOLVER.md) and the standalone prototype in [explainer/](explainer/solveur-switch.html) describe the same content; the page is what is maintained.
 
 ### Why a second copy of the rules
 

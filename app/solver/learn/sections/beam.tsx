@@ -6,7 +6,7 @@ import { createState } from '@/lib/solver/simulate'
 import { beamTrace, framesOf } from '@/lib/solver/trace'
 import { CANVA, OPTIMUM, TILE_WEIGHT } from '../data'
 import { plural } from '../format'
-import { Lead, Panel, Section } from '../section'
+import { Lead, Panel, Section, TryIt } from '../section'
 import { MiniButton, MiniGrid } from '../mini-button'
 import { usePlayer, useStage } from '../stage'
 import { Stepper, useStepper, type Step } from '../stepper'
@@ -119,6 +119,7 @@ export function Beam() {
           </div>
           <p className="text-sm text-muted-foreground">The optimum is {OPTIMUM} moves. A narrow beam sometimes loses the right path and finds a longer one; a wide beam keeps it but takes more time.</p>
         </div>
+        <TryIt engine="beam" grid="6x6:a" label="Try the beam on a 6×6 grid" />
       </Panel>
     </Section>
   )
